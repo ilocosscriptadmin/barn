@@ -18,6 +18,7 @@ const Sidebar: React.FC = () => {
   };
 
   const panelConfig = [
+    // 🏗️ BAY MANAGEMENT - FIRST PANEL
     { 
       id: 'bayManagement' as PanelId, 
       title: 'Bay Management', 
