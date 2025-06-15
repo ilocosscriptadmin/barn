@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, X, Edit2, AlertTriangle, CheckCircle, Info, Ruler, Home } from 'lucide-react';
+import { Plus, X, Edit2, AlertTriangle, CheckCircle, Info, Ruler, Home, Move, Grid, Layers } from 'lucide-react';
 import { useBuildingStore } from '../../store/buildingStore';
 import {
   validateWallLayout,
@@ -16,14 +16,17 @@ import {
 } from '../../utils/wallLayoutValidation';
 
 const WallLayoutPanel: React.FC = () => {
-  const { dimensions, wallLayout, updateWallLayout } = useBuildingStore((state) => ({
+  const { dimensions, wallLayout, updateWallLayout, wallProfile, color } = useBuildingStore((state) => ({
     dimensions: state.currentProject.building.dimensions,
     wallLayout: state.currentProject.building.wallLayout,
-    updateWallLayout: state.updateWallLayout
+    updateWallLayout: state.updateWallLayout,
+    wallProfile: state.currentProject.building.wallProfile,
+    color: state.currentProject.building.color
   }));
 
   const [validationResult, setValidationResult] = useState<any>(null);
   const [editingWall, setEditingWall] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [newWall, setNewWall] = useState({
     name: '',
     width: 0.33, // 4 inches default
@@ -61,7 +64,7 @@ const WallLayoutPanel: React.FC = () => {
   const handleAddWall = () => {
     if (!wallLayout) return;
 
-    console.log('🏗️ Adding new wall:', newWall);
+    console.log('🏗️ Adding new interior wall:', newWall);
     const result = addWallSegment(wallLayout, newWall);
     
     if (result.valid) {
@@ -74,17 +77,18 @@ const WallLayoutPanel: React.FC = () => {
         position: 0,
         type: 'interior'
       });
-      console.log('✅ Wall added successfully');
+      setShowAddForm(false);
+      console.log('✅ Interior wall added successfully');
     } else {
       setValidationResult(result);
-      console.log('❌ Wall addition failed:', result.errors);
+      console.log('❌ Interior wall addition failed:', result.errors);
     }
   };
 
   const handleRemoveWall = (wallId: string) => {
     if (!wallLayout) return;
 
-    console.log('🗑️ Removing wall:', wallId);
+    console.log('🗑️ Removing interior wall:', wallId);
     const result = removeWallSegment(wallLayout, wallId);
     updateWallLayout(result.layout);
     setValidationResult(result);
@@ -93,7 +97,7 @@ const WallLayoutPanel: React.FC = () => {
   const handleUpdateWall = (wallId: string, updates: Partial<WallSegment>) => {
     if (!wallLayout) return;
 
-    console.log('✏️ Updating wall:', wallId, updates);
+    console.log('✏️ Updating interior wall:', wallId, updates);
     const result = updateWallSegment(wallLayout, wallId, updates);
     updateWallLayout(result.layout);
     setValidationResult(result);
@@ -121,10 +125,87 @@ const WallLayoutPanel: React.FC = () => {
     setValidationResult(validation);
   };
 
+  // Quick layout templates
+  const handleCreateStallLayout = () => {
+    if (!wallLayout) return;
+
+    const stallWidth = 12; // 12ft stalls
+    const numStalls = Math.floor(dimensions.width / stallWidth);
+    const actualStallWidth = dimensions.width / numStalls;
+    
+    const newSegments: WallSegment[] = [
+      // Keep exterior walls
+      ...wallLayout.wallSegments.filter(w => w.type === 'exterior'),
+      // Add stall dividers
+      ...Array.from({ length: numStalls - 1 }, (_, i) => ({
+        id: `stall-divider-${i + 1}`,
+        name: `Stall Divider ${i + 1}`,
+        width: 0.33,
+        thickness: 0.33,
+        position: actualStallWidth * (i + 1),
+        type: 'partition' as const
+      }))
+    ];
+
+    const newLayout: WallLayout = {
+      ...wallLayout,
+      wallSegments: newSegments
+    };
+
+    const validation = validateWallLayout(
+      newSegments,
+      [],
+      dimensions.width,
+      dimensions.length
+    );
+
+    if (validation.valid) {
+      updateWallLayout(validation.layout);
+      setValidationResult(validation);
+    }
+  };
+
+  const handleCreateWorkshopLayout = () => {
+    if (!wallLayout) return;
+
+    const centerPosition = dimensions.width / 2;
+    
+    const newSegments: WallSegment[] = [
+      // Keep exterior walls
+      ...wallLayout.wallSegments.filter(w => w.type === 'exterior'),
+      // Add center divider
+      {
+        id: 'workshop-divider',
+        name: 'Workshop Divider',
+        width: 0.33,
+        thickness: 0.33,
+        position: centerPosition,
+        type: 'interior' as const
+      }
+    ];
+
+    const newLayout: WallLayout = {
+      ...wallLayout,
+      wallSegments: newSegments
+    };
+
+    const validation = validateWallLayout(
+      newSegments,
+      [],
+      dimensions.width,
+      dimensions.length
+    );
+
+    if (validation.valid) {
+      updateWallLayout(validation.layout);
+      setValidationResult(validation);
+    }
+  };
+
   if (!wallLayout || !validationResult) {
     return (
       <div className="p-4">
-        <div className="animate-pulse">Loading wall layout...</div>
+        <div className="animate-pulse">Loading interior wall designer...</div>
       </div>
     );
   }
@@ -136,31 +217,55 @@ const WallLayoutPanel: React.FC = () => {
       exit={{ opacity: 0 }}
       className="space-y-4"
     >
-      {/* Room Dimensions Header */}
+      {/* Interior Wall Designer Header */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <div className="flex items-center space-x-2 mb-2">
-          <Home className="w-4 h-4 text-blue-600" />
-          <span className="text-sm font-medium text-blue-800">
-            Room Dimensions: {formatFeetAndInches(dimensions.width)} × {formatFeetAndInches(dimensions.length)}
-          </span>
+          <Layers className="w-4 h-4 text-blue-600" />
+          <span className="text-sm font-medium text-blue-800">Interior Wall Designer</span>
         </div>
         <div className="text-xs text-blue-700 space-y-1">
+          <div>🏗️ Create interior partitions using the same materials as exterior walls</div>
+          <div>📐 Room: {formatFeetAndInches(dimensions.width)} × {formatFeetAndInches(dimensions.length)}</div>
+          <div>🎨 Material: {wallProfile} profile in {color === '#5A6B47' ? 'Cottage Green' : 'custom color'}</div>
+        </div>
+      </div>
+
+      {/* Quick Layout Templates */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+        <div className="flex items-center space-x-2 mb-2">
+          <Grid className="w-4 h-4 text-green-600" />
+          <span className="text-sm font-medium text-green-800">Quick Layout Templates</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleCreateStallLayout}
+            className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded border border-green-200"
+          >
+            🐎 Horse Stalls
+          </button>
+          <button
+            onClick={handleCreateWorkshopLayout}
+            className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded border border-green-200"
+          >
+            🔧 Workshop Split
+          </button>
+        </div>
+        <p className="text-xs text-green-600 mt-2">Or design custom partitions below</p>
+      </div>
+
+      {/* Room Dimensions Header */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+        <div className="flex items-center space-x-2 mb-2">
+          <Home className="w-4 h-4 text-gray-600" />
+          <span className="text-sm font-medium text-gray-800">
+            Barn Interior: {formatFeetAndInches(dimensions.width)} × {formatFeetAndInches(dimensions.length)}
+          </span>
+        </div>
+        <div className="text-xs text-gray-700 space-y-1">
           <div>Available width: {formatFeetAndInches(dimensions.width)}</div>
           <div>Used space: {formatFeetAndInches(validationResult.measurements.usedSpace)}</div>
           <div>Remaining space: {formatFeetAndInches(validationResult.measurements.remainingSpace)}</div>
           <div>Utilization: {validationResult.measurements.utilizationPercentage.toFixed(1)}%</div>
-        </div>
-      </div>
-
-      {/* Important Note */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-        <div className="flex items-center space-x-2 mb-2">
-          <Info className="w-4 h-4 text-green-600" />
-          <span className="text-sm font-medium text-green-800">Interior Wall Designer</span>
-        </div>
-        <div className="text-xs text-green-700">
-          Design interior walls that will appear as 3D structures inside your barn. Perfect for creating stalls, rooms, or work areas.
-          Switch to 3D view to see your walls in the barn!
         </div>
       </div>
 
@@ -210,78 +315,104 @@ const WallLayoutPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Add New Wall */}
-      <div className="border border-gray-200 rounded-lg p-3">
-        <h3 className="text-sm font-medium text-gray-800 mb-3">Add Interior Wall</h3>
-        
-        <div className="space-y-3">
-          <div>
-            <label className="form-label">Wall Name</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="e.g., Stall Divider, Storage Wall"
-              value={newWall.name}
-              onChange={(e) => setNewWall({ ...newWall, name: e.target.value })}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="form-label">Width (ft)</label>
-              <input
-                type="number"
-                className="form-input"
-                min="0.25"
-                max="2"
-                step="0.08" // 1 inch increments
-                value={newWall.width}
-                onChange={(e) => setNewWall({ ...newWall, width: parseFloat(e.target.value) || 0.33 })}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {formatFeetAndInches(newWall.width)}
-              </p>
-            </div>
-
-            <div>
-              <label className="form-label">Position (ft)</label>
-              <input
-                type="number"
-                className="form-input"
-                min="0"
-                max={dimensions.width}
-                step="0.5"
-                value={newWall.position}
-                onChange={(e) => setNewWall({ ...newWall, position: parseFloat(e.target.value) || 0 })}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {formatFeetAndInches(newWall.position)} from left
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="form-label">Wall Type</label>
-            <select
-              className="form-input"
-              value={newWall.type}
-              onChange={(e) => setNewWall({ ...newWall, type: e.target.value as any })}
-            >
-              <option value="interior">Interior Wall</option>
-              <option value="partition">Partition Wall</option>
-            </select>
-          </div>
-
-          <button
-            onClick={handleAddWall}
-            className="w-full btn"
-            disabled={!newWall.name.trim() || newWall.width <= 0}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Interior Wall
-          </button>
-        </div>
+      {/* Add New Wall Button */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-gray-700">Interior Walls ({wallLayout.wallSegments.filter(w => w.type !== 'exterior').length})</h3>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="btn text-xs px-3 py-1"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          Add Wall
+        </button>
       </div>
+
+      {/* Add New Wall Form */}
+      {showAddForm && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="border border-gray-200 rounded-lg p-3 bg-gray-50"
+        >
+          <h4 className="text-sm font-medium text-gray-800 mb-3">Add Interior Wall</h4>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="form-label">Wall Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g., Stall Divider, Storage Wall"
+                value={newWall.name}
+                onChange={(e) => setNewWall({ ...newWall, name: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="form-label">Width (ft)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  min="0.25"
+                  max="2"
+                  step="0.08" // 1 inch increments
+                  value={newWall.width}
+                  onChange={(e) => setNewWall({ ...newWall, width: parseFloat(e.target.value) || 0.33 })}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {formatFeetAndInches(newWall.width)}
+                </p>
+              </div>
+
+              <div>
+                <label className="form-label">Position (ft)</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  min="0"
+                  max={dimensions.width}
+                  step="0.5"
+                  value={newWall.position}
+                  onChange={(e) => setNewWall({ ...newWall, position: parseFloat(e.target.value) || 0 })}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {formatFeetAndInches(newWall.position)} from left
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Wall Type</label>
+              <select
+                className="form-input"
+                value={newWall.type}
+                onChange={(e) => setNewWall({ ...newWall, type: e.target.value as any })}
+              >
+                <option value="interior">Interior Wall (structural)</option>
+                <option value="partition">Partition Wall (lightweight)</option>
+              </select>
+            </div>
+
+            <div className="flex space-x-2">
+              <button
+                onClick={handleAddWall}
+                className="flex-1 btn"
+                disabled={!newWall.name.trim() || newWall.width <= 0}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Interior Wall
+              </button>
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="flex-1 btn-secondary btn"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Existing Walls */}
       {wallLayout.wallSegments.length > 0 && (
@@ -291,7 +422,7 @@ const WallLayoutPanel: React.FC = () => {
             {wallLayout.wallSegments.map((wall) => (
               <div 
                 key={wall.id}
-                className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded"
+                className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded"
               >
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
@@ -383,6 +514,17 @@ const WallLayoutPanel: React.FC = () => {
             <div className="w-3 h-3 bg-gray-500 rounded"></div>
             <span>Partition</span>
           </div>
+        </div>
+      </div>
+
+      {/* Material Information */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Wall Materials</h3>
+        <div className="text-xs text-gray-600 space-y-1">
+          <div>Profile: {wallProfile} (same as exterior walls)</div>
+          <div>Color: {color === '#5A6B47' ? 'Cottage Green' : 'Custom'} (matches exterior)</div>
+          <div>Thickness: Interior walls use same materials as exterior</div>
+          <div>Height: Full height from floor to ceiling ({dimensions.height}ft)</div>
         </div>
       </div>
     </motion.div>
