@@ -24,7 +24,7 @@ const Building: React.FC = () => {
     color: state.currentProject.building.color,
     roofColor: state.currentProject.building.roofColor,
     skylights: state.currentProject.building.skylights,
-    wallProfile: state.currentProject.building.wallProfile || 'trimdek',
+    wallProfile: state.currentProject.building.wallProfile || 'multiclad',
     bays: state.currentProject.building.bays || [],
     activeBayId: state.currentProject.building.activeBayId,
     wallLayout: state.currentProject.building.wallLayout
@@ -127,17 +127,17 @@ const Building: React.FC = () => {
           />
         ))}
 
-        {/* Interior Walls from Wall Layout Design */}
+        {/* Interior Walls from Wall Layout Design - ENHANCED */}
         {wallLayout && wallLayout.wallSegments && wallLayout.wallSegments.length > 0 && (
           <InteriorWalls
             wallSegments={wallLayout.wallSegments}
             roomHeight={dimensions.height}
             roomLength={dimensions.length}
             roomWidth={dimensions.width}
+            wallProfile={wallProfile}
+            wallColor={color}
           />
         )}
-
-        {/* NO MORE BAY DIVIDER WALLS - REMOVED FOR OPEN CONNECTION */}
       </group>
 
       {/* Connected Bay Sections - NO DIVIDER WALLS */}

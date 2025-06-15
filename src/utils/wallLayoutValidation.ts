@@ -132,16 +132,15 @@ export const validateWallPositioning = (
 };
 
 /**
- * Creates a default wall layout for a room
+ * Creates a default wall layout for a room - SIMPLIFIED for better functionality
  */
 export const createDefaultWallLayout = (
   roomWidth: number,
   roomLength: number
 ): WallLayout => {
   const exteriorWallThickness = 0.67; // 8 inches
-  const interiorWallThickness = 0.33; // 4 inches
   
-  // Create basic wall segments with proper spacing
+  // Create ONLY exterior walls by default - user can add interior walls as needed
   const wallSegments: WallSegment[] = [
     {
       id: 'exterior-left',
@@ -150,30 +149,6 @@ export const createDefaultWallLayout = (
       thickness: exteriorWallThickness,
       position: 0,
       type: 'exterior'
-    },
-    {
-      id: 'interior-1',
-      name: 'Interior Wall 1',
-      width: interiorWallThickness,
-      thickness: interiorWallThickness,
-      position: roomWidth * 0.25,
-      type: 'interior'
-    },
-    {
-      id: 'interior-2',
-      name: 'Interior Wall 2',
-      width: interiorWallThickness,
-      thickness: interiorWallThickness,
-      position: roomWidth * 0.5,
-      type: 'interior'
-    },
-    {
-      id: 'interior-3',
-      name: 'Interior Wall 3',
-      width: interiorWallThickness,
-      thickness: interiorWallThickness,
-      position: roomWidth * 0.75,
-      type: 'interior'
     },
     {
       id: 'exterior-right',
@@ -185,30 +160,12 @@ export const createDefaultWallLayout = (
     }
   ];
 
-  // Create gaps between walls
+  // Create minimal gaps - just the space between exterior walls
   const gaps: WallGap[] = [
     {
-      id: 'gap-1',
-      width: roomWidth * 0.25 - exteriorWallThickness,
+      id: 'main-space',
+      width: roomWidth - (exteriorWallThickness * 2),
       position: exteriorWallThickness,
-      purpose: 'spacing'
-    },
-    {
-      id: 'gap-2',
-      width: roomWidth * 0.25 - interiorWallThickness,
-      position: roomWidth * 0.25 + interiorWallThickness,
-      purpose: 'spacing'
-    },
-    {
-      id: 'gap-3',
-      width: roomWidth * 0.25 - interiorWallThickness,
-      position: roomWidth * 0.5 + interiorWallThickness,
-      purpose: 'spacing'
-    },
-    {
-      id: 'gap-4',
-      width: roomWidth * 0.25 - interiorWallThickness - exteriorWallThickness,
-      position: roomWidth * 0.75 + interiorWallThickness,
       purpose: 'spacing'
     }
   ];
