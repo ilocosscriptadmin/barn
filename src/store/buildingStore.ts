@@ -35,6 +35,34 @@ import type {
   AccessPath,
   VentilationArea
 } from '../types';
+import type { 
+  PartitionWall, 
+  PartitionFeature, 
+  InteriorLayout, 
+  VisualizationSettings,
+  StallConfiguration 
+} from '../types/partitions';
+
+// Default visualization settings
+const defaultVisualizationSettings: VisualizationSettings = {
+  exteriorWallOpacity: 1.0,
+  roofOpacity: 1.0,
+  showStructuralElements: true,
+  showPartitionWalls: true,
+  showStallLabels: true,
+  showDimensions: true,
+  interiorLighting: true,
+  shadowQuality: 'medium'
+};
+
+// Default interior layout
+const defaultInteriorLayout: InteriorLayout = {
+  partitionWalls: [],
+  stallConfiguration: [],
+  accessPaths: [],
+  ventilationZones: [],
+  lastModified: new Date()
+};
 
 // Default initial building with minimum room constraints
 const defaultBuilding = {
@@ -51,6 +79,8 @@ const defaultBuilding = {
   wallProfile: 'trimdek' as WallProfile, // Default to Trimdek profile
   wallBoundsProtection: new Map<WallPosition, WallBoundsProtection>(),
   spaceLayout: undefined as SpaceLayoutDetection | undefined,
+  interiorLayout: defaultInteriorLayout,
+  visualizationSettings: defaultVisualizationSettings,
 };
 
 // Create a default project with validated dimensions
@@ -168,6 +198,10 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         };
       });
 
+      // Ensure interior layout and visualization settings exist
+      const interiorLayout = building.interiorLayout || defaultInteriorLayout;
+      const visualizationSettings = building.visualizationSettings || defaultVisualizationSettings;
+
       console.log(`✅ Building state validation passed with space layout protection`);
       console.log(`🛡️ ${wallBoundsProtection.size} protected walls`);
       console.log(`🔍 ${spaceLayout.layoutConstraints.filter(c => c.severity === 'critical').length} critical layout constraints`);
@@ -180,7 +214,9 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
             ...building,
             features: featuresWithEnhancements,
             wallBoundsProtection,
-            spaceLayout
+            spaceLayout,
+            interiorLayout,
+            visualizationSettings
           },
         },
       };
@@ -447,6 +483,189 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
             spaceLayout: updatedSpaceLayout
           },
         },
+      };
+    }),
+
+  // Add a partition wall to the interior layout
+  addPartitionWall: (wall: Omit<PartitionWall, 'id'>) =>
+    set((state) => {
+      const newWall: PartitionWall = {
+        ...wall,
+        id: uuidv4(),
+        features: [],
+        isLoadBearing: false,
+        color: wall.color || '#8B4513'
+      };
+      
+      const currentInteriorLayout = state.currentProject.building.interiorLayout || defaultInteriorLayout;
+      
+      const updatedInteriorLayout: InteriorLayout = {
+        ...currentInteriorLayout,
+        partitionWalls: [...currentInteriorLayout.partitionWalls, newWall],
+        lastModified: new Date()
+      };
+      
+      console.log(`🏗️ Added partition wall: ${newWall.name} (${newWall.material})`);
+      
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            interiorLayout: updatedInteriorLayout
+          }
+        }
+      };
+    }),
+    
+  // Update a partition wall
+  updatePartitionWall: (id: string, updates: Partial<PartitionWall>) =>
+    set((state) => {
+      const currentInteriorLayout = state.currentProject.building.interiorLayout || defaultInteriorLayout;
+      
+      const updatedWalls = currentInteriorLayout.partitionWalls.map(wall => 
+        wall.id === id ? { ...wall, ...updates } : wall
+      );
+      
+      const updatedInteriorLayout: InteriorLayout = {
+        ...currentInteriorLayout,
+        partitionWalls: updatedWalls,
+        lastModified: new Date()
+      };
+      
+      console.log(`🔄 Updated partition wall: ${id}`);
+      
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            interiorLayout: updatedInteriorLayout
+          }
+        }
+      };
+    }),
+    
+  // Remove a partition wall
+  removePartitionWall: (id: string) =>
+    set((state) => {
+      const currentInteriorLayout = state.currentProject.building.interiorLayout || defaultInteriorLayout;
+      
+      const updatedWalls = currentInteriorLayout.partitionWalls.filter(wall => wall.id !== id);
+      
+      const updatedInteriorLayout: InteriorLayout = {
+        ...currentInteriorLayout,
+        partitionWalls: updatedWalls,
+        lastModified: new Date()
+      };
+      
+      console.log(`🗑️ Removed partition wall: ${id}`);
+      
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            interiorLayout: updatedInteriorLayout
+          }
+        }
+      };
+    }),
+    
+  // Add a feature to a partition wall
+  addPartitionFeature: (wallId: string, feature: Omit<PartitionFeature, 'id'>) =>
+    set((state) => {
+      const currentInteriorLayout = state.currentProject.building.interiorLayout || defaultInteriorLayout;
+      
+      const newFeature: PartitionFeature = {
+        ...feature,
+        id: uuidv4()
+      };
+      
+      const updatedWalls = currentInteriorLayout.partitionWalls.map(wall => {
+        if (wall.id === wallId) {
+          return {
+            ...wall,
+            features: [...wall.features, newFeature]
+          };
+        }
+        return wall;
+      });
+      
+      const updatedInteriorLayout: InteriorLayout = {
+        ...currentInteriorLayout,
+        partitionWalls: updatedWalls,
+        lastModified: new Date()
+      };
+      
+      console.log(`➕ Added ${feature.type} to partition wall: ${wallId}`);
+      
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            interiorLayout: updatedInteriorLayout
+          }
+        }
+      };
+    }),
+    
+  // Update visualization settings
+  updateVisualizationSettings: (settings: Partial<VisualizationSettings>) =>
+    set((state) => {
+      const currentSettings = state.currentProject.building.visualizationSettings || defaultVisualizationSettings;
+      
+      const updatedSettings: VisualizationSettings = {
+        ...currentSettings,
+        ...settings
+      };
+      
+      console.log(`👁️ Updated visualization settings:`, settings);
+      
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            visualizationSettings: updatedSettings
+          }
+        }
+      };
+    }),
+    
+  // Add a stall configuration
+  addStallConfiguration: (stall: Omit<StallConfiguration, 'id'>) =>
+    set((state) => {
+      const currentInteriorLayout = state.currentProject.building.interiorLayout || defaultInteriorLayout;
+      
+      const newStall: StallConfiguration = {
+        ...stall,
+        id: uuidv4()
+      };
+      
+      const updatedInteriorLayout: InteriorLayout = {
+        ...currentInteriorLayout,
+        stallConfiguration: [...currentInteriorLayout.stallConfiguration, newStall],
+        lastModified: new Date()
+      };
+      
+      console.log(`🏠 Added stall configuration: ${stall.name} (${stall.purpose})`);
+      
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            interiorLayout: updatedInteriorLayout
+          }
+        }
       };
     }),
 

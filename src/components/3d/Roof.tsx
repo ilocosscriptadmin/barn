@@ -10,9 +10,19 @@ interface RoofProps {
   color: string;
   skylights?: Skylight[];
   wallProfile?: string; // Add wall profile prop for roof texture
+  opacity?: number; // Added opacity prop for transparency control
 }
 
-const Roof: React.FC<RoofProps> = ({ width, length, height, pitch, color, skylights = [], wallProfile = 'trimdek' }) => {
+const Roof: React.FC<RoofProps> = ({ 
+  width, 
+  length, 
+  height, 
+  pitch, 
+  color, 
+  skylights = [], 
+  wallProfile = 'trimdek',
+  opacity = 1.0 // Default to fully opaque
+}) => {
   const roofHeight = useMemo(() => {
     return (width / 2) * (pitch / 12);
   }, [width, pitch]);
@@ -232,12 +242,16 @@ const Roof: React.FC<RoofProps> = ({ width, length, height, pitch, color, skylig
       map: leftTexture,
       ...materialProps,
       side: THREE.DoubleSide,
+      transparent: opacity < 1.0, // Enable transparency if opacity < 1
+      opacity: opacity // Apply opacity value
     });
 
     const rightMaterial = new THREE.MeshStandardMaterial({
       map: rightTexture,
       ...materialProps,
       side: THREE.DoubleSide,
+      transparent: opacity < 1.0, // Enable transparency if opacity < 1
+      opacity: opacity // Apply opacity value
     });
     
     console.log(`🎯 ENHANCED ROOF MATERIALS CREATED: ${wallProfile.toUpperCase()} PROFILE WITH MATTE FINISH - MUCH MORE VISIBLE`);
@@ -368,7 +382,7 @@ const Roof: React.FC<RoofProps> = ({ width, length, height, pitch, color, skylig
       leftRoofMaterial: leftMaterial, 
       rightRoofMaterial: rightMaterial 
     };
-  }, [color, length, width, panelLength, skylights, wallProfile]);
+  }, [color, length, width, panelLength, skylights, wallProfile, opacity]);
 
   const skylightMaterial = new THREE.MeshPhysicalMaterial({
     color: '#FFFFFF',
@@ -464,6 +478,8 @@ const Roof: React.FC<RoofProps> = ({ width, length, height, pitch, color, skylig
           metalness={color === '#FFFFFF' ? 0.1 : ['#1F2937', '#374151', '#4B5563'].includes(color) ? 0.2 : 0.15}
           roughness={color === '#FFFFFF' ? 0.8 : ['#1F2937', '#374151', '#4B5563'].includes(color) ? 0.7 : 0.75}
           envMapIntensity={color === '#FFFFFF' ? 0.3 : ['#1F2937', '#374151', '#4B5563'].includes(color) ? 0.4 : 0.35}
+          transparent={opacity < 1.0}
+          opacity={opacity}
         />
       </mesh>
     </group>

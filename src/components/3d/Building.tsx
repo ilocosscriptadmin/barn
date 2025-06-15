@@ -4,15 +4,18 @@ import { useBuildingStore } from '../../store/buildingStore';
 import Wall from './Wall';
 import Roof from './Roof';
 import WallFeature from './WallFeature';
+import InteriorLayout from './InteriorLayout';
 
 const Building: React.FC = () => {
-  const { dimensions, features, color, roofColor, skylights, wallProfile } = useBuildingStore((state) => ({
+  const { dimensions, features, color, roofColor, skylights, wallProfile, interiorLayout, visualizationSettings } = useBuildingStore((state) => ({
     dimensions: state.currentProject.building.dimensions,
     features: state.currentProject.building.features,
     color: state.currentProject.building.color,
     roofColor: state.currentProject.building.roofColor,
     skylights: state.currentProject.building.skylights,
-    wallProfile: state.currentProject.building.wallProfile || 'trimdek'
+    wallProfile: state.currentProject.building.wallProfile || 'trimdek',
+    interiorLayout: state.currentProject.building.interiorLayout,
+    visualizationSettings: state.currentProject.building.visualizationSettings
   }));
   
   const halfWidth = dimensions.width / 2;
@@ -28,6 +31,10 @@ const Building: React.FC = () => {
     console.log(`Wall ${wallPosition} has ${wallFeatures.length} features:`, wallFeatures.map(f => `${f.type} ${f.width}x${f.height} at ${f.position.alignment} ${f.position.xOffset}`));
     return wallFeatures;
   };
+  
+  // Get exterior wall opacity from visualization settings
+  const exteriorWallOpacity = visualizationSettings?.exteriorWallOpacity || 1.0;
+  const roofOpacity = visualizationSettings?.roofOpacity || 1.0;
   
   return (
     <group>
@@ -52,6 +59,7 @@ const Building: React.FC = () => {
         roofPitch={dimensions.roofPitch}
         wallFeatures={getWallFeatures('front')}
         wallProfile={wallProfile}
+        opacity={exteriorWallOpacity}
       />
       
       {/* Back wall */}
@@ -65,6 +73,7 @@ const Building: React.FC = () => {
         rotation={[0, Math.PI, 0]}
         wallFeatures={getWallFeatures('back')}
         wallProfile={wallProfile}
+        opacity={exteriorWallOpacity}
       />
       
       {/* Left wall */}
@@ -77,6 +86,7 @@ const Building: React.FC = () => {
         rotation={[0, Math.PI / 2, 0]}
         wallFeatures={getWallFeatures('left')}
         wallProfile={wallProfile}
+        opacity={exteriorWallOpacity}
       />
       
       {/* Right wall */}
@@ -89,9 +99,10 @@ const Building: React.FC = () => {
         rotation={[0, -Math.PI / 2, 0]}
         wallFeatures={getWallFeatures('right')}
         wallProfile={wallProfile}
+        opacity={exteriorWallOpacity}
       />
       
-      {/* Roof with profile-specific textures */}
+      {/* Roof with profile-specific textures and opacity control */}
       <Roof
         width={dimensions.width}
         length={dimensions.length}
@@ -100,6 +111,7 @@ const Building: React.FC = () => {
         color={roofColor}
         skylights={skylights}
         wallProfile={wallProfile}
+        opacity={roofOpacity}
       />
       
       {/* Wall Features (doors, windows, etc.) */}
@@ -110,6 +122,15 @@ const Building: React.FC = () => {
           buildingDimensions={dimensions}
         />
       ))}
+      
+      {/* Interior Layout with partition walls */}
+      {interiorLayout && (
+        <InteriorLayout
+          interiorLayout={interiorLayout}
+          buildingDimensions={dimensions}
+          visualizationSettings={visualizationSettings || {}}
+        />
+      )}
     </group>
   );
 };

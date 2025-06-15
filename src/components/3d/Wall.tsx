@@ -13,6 +13,7 @@ interface WallProps {
   roofPitch?: number;
   wallFeatures?: WallFeature[];
   wallProfile?: WallProfile;
+  opacity?: number; // Added opacity prop for transparency control
 }
 
 const Wall: React.FC<WallProps> = ({ 
@@ -24,7 +25,8 @@ const Wall: React.FC<WallProps> = ({
   rotation = [0, 0, 0],
   roofPitch = 0,
   wallFeatures = [],
-  wallProfile = 'trimdek'
+  wallProfile = 'trimdek',
+  opacity = 1.0 // Default to fully opaque
 }) => {
   // Create profile-specific textured material
   const wallMaterial = useMemo(() => {
@@ -284,8 +286,10 @@ const Wall: React.FC<WallProps> = ({
       map: texture,
       ...materialProps,
       side: THREE.DoubleSide,
+      transparent: opacity < 1.0, // Enable transparency if opacity < 1
+      opacity: opacity // Apply opacity value
     });
-  }, [color, width, height, wallProfile]);
+  }, [color, width, height, wallProfile, opacity]);
 
   // Create wall geometry with cutouts for windows only (doors remain solid for structural integrity)
   const wallGeometry = useMemo(() => {
