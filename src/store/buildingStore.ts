@@ -494,6 +494,10 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         id: uuidv4(),
         features: [],
         isLoadBearing: false,
+        currentHeight: wall.height || state.currentProject.building.dimensions.height,
+        targetHeight: wall.height || state.currentProject.building.dimensions.height,
+        isLocked: false,
+        speed: 5, // Default medium speed (1-10 scale)
         color: wall.color || '#8B4513'
       };
       
@@ -524,9 +528,31 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
     set((state) => {
       const currentInteriorLayout = state.currentProject.building.interiorLayout || defaultInteriorLayout;
       
-      const updatedWalls = currentInteriorLayout.partitionWalls.map(wall => 
-        wall.id === id ? { ...wall, ...updates } : wall
-      );
+      const updatedWalls = currentInteriorLayout.partitionWalls.map(wall => {
+        if (wall.id === id) {
+          // If the wall is locked, only allow certain updates
+          if (wall.isLocked && updates.targetHeight !== undefined) {
+            console.log(`🔒 Wall ${id} is locked - height changes not applied`);
+            // Remove targetHeight from updates to prevent changes when locked
+            const { targetHeight, ...allowedUpdates } = updates;
+            return { ...wall, ...allowedUpdates };
+          }
+          
+          // If targetHeight is being updated, update it but don't immediately change currentHeight
+          // This allows for animated transitions
+          if (updates.targetHeight !== undefined && !wall.isLocked) {
+            return { 
+              ...wall, 
+              ...updates,
+              // Keep current height as is for animation
+              currentHeight: updates.currentHeight !== undefined ? updates.currentHeight : wall.currentHeight
+            };
+          }
+          
+          return { ...wall, ...updates };
+        }
+        return wall;
+      });
       
       const updatedInteriorLayout: InteriorLayout = {
         ...currentInteriorLayout,

@@ -4,11 +4,15 @@ export interface PartitionWall {
   startPoint: { x: number; z: number }; // 3D coordinates within building
   endPoint: { x: number; z: number };
   height: number; // Wall height (can be partial or full)
+  currentHeight: number; // Current rendered height (for animation)
+  targetHeight: number; // Target height set by user
   thickness: number; // Wall thickness in feet
   material: PartitionMaterial;
   extendToRoof: boolean; // Whether wall extends to roof or stops at specified height
   features: PartitionFeature[]; // Doors, windows, etc.
   isLoadBearing: boolean;
+  isLocked: boolean; // Whether the wall height is locked
+  speed: number; // Speed of height change animation (1-10)
   color: string;
 }
 

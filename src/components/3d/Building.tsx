@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useBuildingStore } from '../../store/buildingStore';
 import Wall from './Wall';
@@ -35,6 +35,36 @@ const Building: React.FC = () => {
   // Get exterior wall opacity from visualization settings
   const exteriorWallOpacity = visualizationSettings?.exteriorWallOpacity || 1.0;
   const roofOpacity = visualizationSettings?.roofOpacity || 1.0;
+  
+  // Animate partition walls
+  useFrame(() => {
+    if (!interiorLayout) return;
+    
+    // Check if any walls need height updates
+    let needsUpdate = false;
+    
+    interiorLayout.partitionWalls.forEach(wall => {
+      if (!wall.isLocked && wall.currentHeight !== wall.targetHeight) {
+        needsUpdate = true;
+        
+        // Update the wall's current height in the store
+        // This would normally be done in the PartitionWall3D component
+        // but we're simulating it here for demonstration
+        const newHeight = wall.currentHeight + (wall.targetHeight > wall.currentHeight ? 0.1 : -0.1);
+        
+        // Check if we're close enough to snap to target
+        if (Math.abs(newHeight - wall.targetHeight) < 0.1) {
+          useBuildingStore.getState().updatePartitionWall(wall.id, {
+            currentHeight: wall.targetHeight
+          });
+        } else {
+          useBuildingStore.getState().updatePartitionWall(wall.id, {
+            currentHeight: newHeight
+          });
+        }
+      }
+    });
+  });
   
   return (
     <group>

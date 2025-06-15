@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2, Move, Eye, EyeOff, Settings, Grid, Home, DoorOpen, Ruler } from 'lucide-react';
+import { Plus, Edit2, Trash2, Move, Eye, EyeOff, Settings, Grid, Home, DoorOpen, Lock, Unlock, AlertTriangle, ArrowUp, ArrowDown, Pause, Play } from 'lucide-react';
 import { useBuildingStore } from '../../store/buildingStore';
 import type { PartitionWall, PartitionFeature, PartitionMaterial, StallConfiguration } from '../../types/partitions';
 
@@ -27,19 +27,19 @@ const InteriorPartitionsPanel: React.FC = () => {
 
   const [selectedWall, setSelectedWall] = useState<string | null>(null);
   const [editingWall, setEditingWall] = useState<string | null>(null);
-  const [placementMode, setPlacementMode] = useState<boolean>(false);
-  const [placementStep, setPlacementStep] = useState<number>(0);
-  const [startPoint, setStartPoint] = useState<{x: number, z: number}>({x: 0, z: 0});
-  const [endPoint, setEndPoint] = useState<{x: number, z: number}>({x: 0, z: 0});
-  const [wallPreview, setWallPreview] = useState<{
-    name: string,
-    material: PartitionMaterial,
-    thickness: number,
-    color: string
-  }>({
-    name: 'New Wall',
-    material: 'wood_planks',
+  const [showWallCreator, setShowWallCreator] = useState(false);
+  const [newWall, setNewWall] = useState({
+    name: '',
+    startPoint: { x: -dimensions.width/4, z: -dimensions.length/4 },
+    endPoint: { x: dimensions.width/4, z: -dimensions.length/4 },
+    height: 8,
+    currentHeight: 8,
+    targetHeight: 8,
     thickness: 0.5,
+    material: 'wood_planks' as PartitionMaterial,
+    extendToRoof: false,
+    isLocked: false,
+    speed: 5,
     color: '#8B4513'
   });
 
@@ -61,65 +61,32 @@ const InteriorPartitionsPanel: React.FC = () => {
     { value: 'gate_opening', label: 'Gate Opening', icon: '🚧' }
   ];
 
-  // Function to handle wall placement
-  const handleWallPlacement = (x: number, z: number) => {
-    if (placementStep === 0) {
-      // Set start point
-      setStartPoint({x, z});
-      setEndPoint({x, z}); // Initialize end point
-      setPlacementStep(1);
-    } else if (placementStep === 1) {
-      // Set end point and create wall
-      setEndPoint({x, z});
-      
-      const newWall: Omit<PartitionWall, 'id'> = {
-        name: wallPreview.name,
-        startPoint: startPoint,
-        endPoint: {x, z},
-        height: dimensions.height,
-        thickness: wallPreview.thickness,
-        material: wallPreview.material,
-        extendToRoof: true,
-        color: wallPreview.color,
-        features: [],
-        isLoadBearing: false
-      };
-      
-      addPartitionWall(newWall);
-      
-      // Reset placement mode
-      setPlacementStep(0);
-      setPlacementMode(false);
-    }
-  };
+  const handleAddWall = () => {
+    if (!newWall.name.trim()) return;
 
-  // Listen for clicks on the 3D canvas when in placement mode
-  useEffect(() => {
-    if (!placementMode) return;
-    
-    const handleCanvasClick = (e: MouseEvent) => {
-      // This is a simplified version - in a real implementation,
-      // you would need to use raycasting to get the 3D position
-      // For now, we'll just use random positions within the barn dimensions
-      const x = (Math.random() * dimensions.width) - (dimensions.width / 2);
-      const z = (Math.random() * dimensions.length) - (dimensions.length / 2);
-      
-      handleWallPlacement(x, z);
+    const wall: Omit<PartitionWall, 'id'> = {
+      ...newWall,
+      features: [],
+      isLoadBearing: false
     };
-    
-    // In a real implementation, you would add the event listener to the canvas
-    // For this example, we'll simulate clicks after a delay
-    if (placementStep === 0) {
-      const timer = setTimeout(() => {
-        const x = (Math.random() * dimensions.width * 0.8) - (dimensions.width * 0.4);
-        const z = (Math.random() * dimensions.length * 0.8) - (dimensions.length * 0.4);
-        handleWallPlacement(x, z);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-    
-    return () => {};
-  }, [placementMode, placementStep, dimensions]);
+
+    addPartitionWall(wall);
+    setNewWall({
+      name: '',
+      startPoint: { x: -dimensions.width/4, z: -dimensions.length/4 },
+      endPoint: { x: dimensions.width/4, z: -dimensions.length/4 },
+      height: 8,
+      currentHeight: 8,
+      targetHeight: 8,
+      thickness: 0.5,
+      material: 'wood_planks',
+      extendToRoof: false,
+      isLocked: false,
+      speed: 5,
+      color: '#8B4513'
+    });
+    setShowWallCreator(false);
+  };
 
   const handleAddFeature = (wallId: string, featureType: string) => {
     const feature: Omit<PartitionFeature, 'id'> = {
@@ -139,8 +106,63 @@ const InteriorPartitionsPanel: React.FC = () => {
     addPartitionFeature(wallId, feature);
   };
 
+  const handleWallHeightChange = (wall: PartitionWall, newTargetHeight: number) => {
+    if (wall.isLocked) return;
+    
+    updatePartitionWall(wall.id, {
+      targetHeight: newTargetHeight
+    });
+  };
+
+  const handleWallSpeedChange = (wall: PartitionWall, newSpeed: number) => {
+    updatePartitionWall(wall.id, {
+      speed: newSpeed
+    });
+  };
+
+  const toggleWallLock = (wall: PartitionWall) => {
+    updatePartitionWall(wall.id, {
+      isLocked: !wall.isLocked
+    });
+  };
+
+  const handleEmergencyStop = () => {
+    // Stop all moving walls by setting their target height to current height
+    if (!interiorLayout?.partitionWalls) return;
+    
+    interiorLayout.partitionWalls.forEach(wall => {
+      if (!wall.isLocked && wall.currentHeight !== wall.targetHeight) {
+        updatePartitionWall(wall.id, {
+          targetHeight: wall.currentHeight
+        });
+      }
+    });
+  };
+
   const selectedWallData = selectedWall ? 
     interiorLayout?.partitionWalls.find(w => w.id === selectedWall) : null;
+
+  // Add a sample wall if none exist
+  const handleAddSampleWall = () => {
+    const sampleWall: Omit<PartitionWall, 'id'> = {
+      name: 'Sample Divider Wall',
+      startPoint: { x: -dimensions.width/4, z: 0 },
+      endPoint: { x: dimensions.width/4, z: 0 },
+      height: 8,
+      currentHeight: 0, // Start at ground level
+      targetHeight: 8, // Target full height
+      thickness: 0.5,
+      material: 'wood_planks',
+      extendToRoof: false,
+      isLocked: false,
+      speed: 5,
+      color: '#8B4513',
+      features: [],
+      isLoadBearing: false
+    };
+    
+    addPartitionWall(sampleWall);
+  };
 
   return (
     <motion.div 
@@ -226,128 +248,191 @@ const InteriorPartitionsPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Wall Placement Tool */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <Ruler className="w-4 h-4 text-green-600" />
-            <span className="text-sm font-medium text-green-800">Wall Placement Tool</span>
-          </div>
-          
-          {placementMode && (
-            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-              {placementStep === 0 ? 'Click to set start point' : 'Click to set end point'}
-            </span>
-          )}
-        </div>
-        
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-green-700 block mb-1">Wall Material</label>
-              <select
-                value={wallPreview.material}
-                onChange={(e) => {
-                  const material = e.target.value as PartitionMaterial;
-                  const materialOption = materialOptions.find(m => m.value === material);
-                  setWallPreview({ 
-                    ...wallPreview, 
-                    material,
-                    color: materialOption?.color || '#8B4513'
-                  });
-                }}
-                className="w-full text-xs p-2 border border-green-200 rounded bg-white"
-                disabled={placementMode}
-              >
-                {materialOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="text-xs text-green-700 block mb-1">Wall Thickness</label>
-              <select
-                value={wallPreview.thickness}
-                onChange={(e) => setWallPreview({ 
-                  ...wallPreview, 
-                  thickness: parseFloat(e.target.value)
-                })}
-                className="w-full text-xs p-2 border border-green-200 rounded bg-white"
-                disabled={placementMode}
-              >
-                <option value="0.33">4 inches (0.33 ft)</option>
-                <option value="0.5">6 inches (0.5 ft)</option>
-                <option value="0.67">8 inches (0.67 ft)</option>
-                <option value="1">12 inches (1 ft)</option>
-              </select>
-            </div>
-          </div>
-          
-          <div>
-            <label className="text-xs text-green-700 block mb-1">Wall Name</label>
-            <input
-              type="text"
-              value={wallPreview.name}
-              onChange={(e) => setWallPreview({ ...wallPreview, name: e.target.value })}
-              placeholder="e.g., Stall Divider 1"
-              className="w-full text-xs p-2 border border-green-200 rounded bg-white"
-              disabled={placementMode}
-            />
-          </div>
-          
-          <div className="bg-white p-3 rounded border border-green-200">
-            <h4 className="text-xs font-medium text-green-800 mb-2">Wall Placement Instructions:</h4>
-            <ol className="text-xs text-green-700 space-y-1 list-decimal pl-4">
-              <li>Click "Start Wall Placement" button below</li>
-              <li>Click in the 3D view to set the wall's start point</li>
-              <li>Click again to set the end point and create the wall</li>
-              <li>Wall height will automatically match the barn's height</li>
-            </ol>
-          </div>
-          
-          <button
-            onClick={() => {
-              if (placementMode) {
-                setPlacementMode(false);
-                setPlacementStep(0);
-              } else {
-                setPlacementMode(true);
-                setPlacementStep(0);
-              }
-            }}
-            className={`w-full py-2 px-4 rounded-lg flex items-center justify-center space-x-2 ${
-              placementMode 
-                ? 'bg-red-600 hover:bg-red-700 text-white' 
-                : 'bg-green-600 hover:bg-green-700 text-white'
-            }`}
-          >
-            {placementMode ? (
-              <>
-                <Trash2 className="w-4 h-4" />
-                <span>Cancel Wall Placement</span>
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4" />
-                <span>Start Wall Placement</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      {/* Emergency Stop Button */}
+      <button
+        onClick={handleEmergencyStop}
+        className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2"
+      >
+        <Pause className="w-4 h-4" />
+        <span>EMERGENCY STOP</span>
+      </button>
 
-      {/* Existing Walls List */}
+      {/* Partition Walls Management */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-gray-800">Partition Walls</h3>
-          <span className="text-xs text-gray-500">
-            {interiorLayout?.partitionWalls.length || 0} walls
-          </span>
+          <button
+            onClick={() => setShowWallCreator(!showWallCreator)}
+            className="btn text-xs px-2 py-1"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Add Wall
+          </button>
         </div>
-        
+
+        {/* Wall Creator */}
+        {showWallCreator && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+            <h4 className="text-sm font-medium text-gray-800 mb-2">Create New Wall</h4>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-700 block mb-1">Wall Name</label>
+                <input
+                  type="text"
+                  value={newWall.name}
+                  onChange={(e) => setNewWall({ ...newWall, name: e.target.value })}
+                  placeholder="e.g., Stall Divider 1"
+                  className="form-input text-xs"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-700 block mb-1">Start Point</label>
+                  <div className="grid grid-cols-2 gap-1">
+                    <input
+                      type="number"
+                      value={newWall.startPoint.x}
+                      onChange={(e) => setNewWall({ 
+                        ...newWall, 
+                        startPoint: { ...newWall.startPoint, x: parseFloat(e.target.value) || 0 }
+                      })}
+                      placeholder="X"
+                      className="form-input text-xs"
+                    />
+                    <input
+                      type="number"
+                      value={newWall.startPoint.z}
+                      onChange={(e) => setNewWall({ 
+                        ...newWall, 
+                        startPoint: { ...newWall.startPoint, z: parseFloat(e.target.value) || 0 }
+                      })}
+                      placeholder="Z"
+                      className="form-input text-xs"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-xs text-gray-700 block mb-1">End Point</label>
+                  <div className="grid grid-cols-2 gap-1">
+                    <input
+                      type="number"
+                      value={newWall.endPoint.x}
+                      onChange={(e) => setNewWall({ 
+                        ...newWall, 
+                        endPoint: { ...newWall.endPoint, x: parseFloat(e.target.value) || 0 }
+                      })}
+                      placeholder="X"
+                      className="form-input text-xs"
+                    />
+                    <input
+                      type="number"
+                      value={newWall.endPoint.z}
+                      onChange={(e) => setNewWall({ 
+                        ...newWall, 
+                        endPoint: { ...newWall.endPoint, z: parseFloat(e.target.value) || 0 }
+                      })}
+                      placeholder="Z"
+                      className="form-input text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-700 block mb-1">Height (ft)</label>
+                  <input
+                    type="number"
+                    value={newWall.height}
+                    onChange={(e) => {
+                      const height = parseFloat(e.target.value) || 8;
+                      setNewWall({ 
+                        ...newWall, 
+                        height, 
+                        currentHeight: height,
+                        targetHeight: height
+                      });
+                    }}
+                    min="1"
+                    max={dimensions.height}
+                    step="0.5"
+                    className="form-input text-xs"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-xs text-gray-700 block mb-1">Thickness (ft)</label>
+                  <input
+                    type="number"
+                    value={newWall.thickness}
+                    onChange={(e) => setNewWall({ ...newWall, thickness: parseFloat(e.target.value) || 0.5 })}
+                    min="0.25"
+                    max="2"
+                    step="0.25"
+                    className="form-input text-xs"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-xs text-gray-700 block mb-1">Material</label>
+                <select
+                  value={newWall.material}
+                  onChange={(e) => {
+                    const material = e.target.value as PartitionMaterial;
+                    const materialOption = materialOptions.find(m => m.value === material);
+                    setNewWall({ 
+                      ...newWall, 
+                      material,
+                      color: materialOption?.color || '#8B4513'
+                    });
+                  }}
+                  className="form-input text-xs"
+                >
+                  {materialOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="extendToRoof"
+                  checked={newWall.extendToRoof}
+                  onChange={(e) => setNewWall({ ...newWall, extendToRoof: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="extendToRoof" className="text-xs text-gray-700">
+                  Extend to roof
+                </label>
+              </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleAddWall}
+                  className="flex-1 btn text-xs"
+                  disabled={!newWall.name.trim()}
+                >
+                  Create Wall
+                </button>
+                <button
+                  onClick={() => setShowWallCreator(false)}
+                  className="flex-1 btn-secondary btn text-xs"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Existing Walls List */}
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {interiorLayout?.partitionWalls.length > 0 ? (
             interiorLayout.partitionWalls.map((wall) => (
@@ -367,9 +452,9 @@ const InteriorPartitionsPanel: React.FC = () => {
                       style={{ backgroundColor: wall.color }}
                     />
                     <span className="text-sm font-medium">{wall.name}</span>
-                    <span className="text-xs text-gray-500">
-                      ({wall.features.length} features)
-                    </span>
+                    {wall.isLocked && (
+                      <Lock className="w-3 h-3 text-red-500" />
+                    )}
                   </div>
                   
                   <div className="flex items-center space-x-1">
@@ -396,17 +481,59 @@ const InteriorPartitionsPanel: React.FC = () => {
                 
                 <div className="text-xs text-gray-600 mt-1">
                   {materialOptions.find(m => m.value === wall.material)?.label} • 
-                  {wall.height}ft high • 
+                  {wall.currentHeight.toFixed(1)}ft / {wall.targetHeight.toFixed(1)}ft • 
                   {wall.extendToRoof ? 'Extends to roof' : 'Partial height'}
+                </div>
+                
+                {/* Wall Controls */}
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!wall.isLocked) {
+                        handleWallHeightChange(wall, Math.min(wall.targetHeight + 1, dimensions.height));
+                      }
+                    }}
+                    disabled={wall.isLocked || wall.targetHeight >= dimensions.height}
+                    className={`text-xs px-2 py-1 rounded flex items-center justify-center space-x-1 ${
+                      wall.isLocked || wall.targetHeight >= dimensions.height
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    <ArrowUp className="w-3 h-3" />
+                    <span>Raise</span>
+                  </button>
+                  
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!wall.isLocked) {
+                        handleWallHeightChange(wall, Math.max(wall.targetHeight - 1, 0));
+                      }
+                    }}
+                    disabled={wall.isLocked || wall.targetHeight <= 0}
+                    className={`text-xs px-2 py-1 rounded flex items-center justify-center space-x-1 ${
+                      wall.isLocked || wall.targetHeight <= 0
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    <ArrowDown className="w-3 h-3" />
+                    <span>Lower</span>
+                  </button>
                 </div>
               </div>
             ))
           ) : (
             <div className="text-center py-4 text-gray-500 text-sm">
               <p>No partition walls created yet</p>
-              <p className="mt-1 text-xs text-gray-400">
-                Use the wall placement tool above to create walls
-              </p>
+              <button 
+                onClick={handleAddSampleWall}
+                className="mt-2 text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Add Sample Wall
+              </button>
             </div>
           )}
         </div>
@@ -423,6 +550,134 @@ const InteriorPartitionsPanel: React.FC = () => {
                 Math.pow(selectedWallData.endPoint.z - selectedWallData.startPoint.z, 2)
               ).toFixed(1)}ft long
             </span>
+          </div>
+          
+          {/* Wall Height Controls */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-gray-700">Wall Height</label>
+              <div className="flex items-center space-x-1">
+                <span className="text-xs font-medium">{selectedWallData.currentHeight.toFixed(1)}ft</span>
+                <span className="text-xs text-gray-500">/ {selectedWallData.targetHeight.toFixed(1)}ft</span>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <input
+                type="range"
+                min="0"
+                max={dimensions.height}
+                step="0.5"
+                value={selectedWallData.targetHeight}
+                onChange={(e) => handleWallHeightChange(selectedWallData, parseFloat(e.target.value))}
+                disabled={selectedWallData.isLocked}
+                className={`flex-1 ${selectedWallData.isLocked ? 'opacity-50' : ''}`}
+              />
+              <input
+                type="number"
+                min="0"
+                max={dimensions.height}
+                step="0.5"
+                value={selectedWallData.targetHeight}
+                onChange={(e) => handleWallHeightChange(selectedWallData, parseFloat(e.target.value) || 0)}
+                disabled={selectedWallData.isLocked}
+                className={`w-16 form-input text-xs ${selectedWallData.isLocked ? 'bg-gray-100' : ''}`}
+              />
+            </div>
+            
+            {selectedWallData.isLocked && (
+              <div className="mt-1 text-xs text-red-600 flex items-center space-x-1">
+                <Lock className="w-3 h-3" />
+                <span>Wall height is locked</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Wall Speed Controls */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-gray-700">Movement Speed</label>
+              <span className="text-xs font-medium">{selectedWallData.speed}/10</span>
+            </div>
+            
+            <input
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value={selectedWallData.speed}
+              onChange={(e) => handleWallSpeedChange(selectedWallData, parseInt(e.target.value))}
+              className="w-full"
+            />
+            
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>Slow</span>
+              <span>Fast</span>
+            </div>
+          </div>
+          
+          {/* Wall Lock Control */}
+          <div className="mb-3">
+            <button
+              onClick={() => toggleWallLock(selectedWallData)}
+              className={`w-full py-2 px-4 rounded-lg flex items-center justify-center space-x-2 ${
+                selectedWallData.isLocked
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+            >
+              {selectedWallData.isLocked ? (
+                <>
+                  <Unlock className="w-4 h-4" />
+                  <span>Unlock Wall</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" />
+                  <span>Lock Wall</span>
+                </>
+              )}
+            </button>
+          </div>
+          
+          {/* Preset Height Buttons */}
+          <div className="mb-3">
+            <label className="text-xs text-gray-700 block mb-2">Preset Heights</label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => handleWallHeightChange(selectedWallData, 0)}
+                disabled={selectedWallData.isLocked}
+                className={`text-xs px-2 py-1 rounded ${
+                  selectedWallData.isLocked
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                }`}
+              >
+                Floor (0ft)
+              </button>
+              <button
+                onClick={() => handleWallHeightChange(selectedWallData, dimensions.height / 2)}
+                disabled={selectedWallData.isLocked}
+                className={`text-xs px-2 py-1 rounded ${
+                  selectedWallData.isLocked
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                }`}
+              >
+                Half ({(dimensions.height / 2).toFixed(1)}ft)
+              </button>
+              <button
+                onClick={() => handleWallHeightChange(selectedWallData, dimensions.height)}
+                disabled={selectedWallData.isLocked}
+                className={`text-xs px-2 py-1 rounded ${
+                  selectedWallData.isLocked
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                }`}
+              >
+                Full ({dimensions.height.toFixed(1)}ft)
+              </button>
+            </div>
           </div>
           
           {/* Add Features */}
@@ -470,14 +725,29 @@ const InteriorPartitionsPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Wall Placement Information */}
+      {/* Control Panel Information */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-        <h4 className="text-sm font-medium text-gray-800 mb-2">Wall Placement Guide</h4>
+        <h4 className="text-sm font-medium text-gray-800 mb-2">Wall Control Panel</h4>
         <div className="text-xs text-gray-600 space-y-1">
-          <div>• Walls automatically match barn height ({dimensions.height}ft)</div>
-          <div>• All walls are standard above-ground partitions</div>
-          <div>• Click-and-drag placement for intuitive positioning</div>
-          <div>• Add doors and windows after wall placement</div>
+          <div>• Select a wall to access detailed controls</div>
+          <div>• Use the sliders to set precise wall heights</div>
+          <div>• Lock walls to prevent accidental movement</div>
+          <div>• Adjust speed for smooth or rapid transitions</div>
+          <div>• Use Emergency Stop to halt all wall movement</div>
+        </div>
+      </div>
+
+      {/* Safety Information */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+        <div className="flex items-center space-x-2 mb-2">
+          <AlertTriangle className="w-4 h-4 text-yellow-600" />
+          <h4 className="text-sm font-medium text-yellow-800">Safety Information</h4>
+        </div>
+        <div className="text-xs text-yellow-700 space-y-1">
+          <div>• Ensure area is clear before raising or lowering walls</div>
+          <div>• Use Emergency Stop for immediate halt of all movement</div>
+          <div>• Lock walls when in final position for safety</div>
+          <div>• Slower speeds recommended for occupied areas</div>
         </div>
       </div>
     </motion.div>

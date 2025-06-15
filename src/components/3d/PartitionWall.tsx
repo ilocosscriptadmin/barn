@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
 import type { PartitionWall, PartitionFeature, PartitionMaterialProperties } from '../../types/partitions';
 import PartitionFeature3D from './PartitionFeature3D';
 
@@ -75,67 +76,25 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
 }) => {
   console.log("Rendering partition wall:", partition.name);
   
-  // Calculate wall geometry
-  const wallGeometry = useMemo(() => {
-    const startX = partition.startPoint.x;
-    const startZ = partition.startPoint.z;
-    const endX = partition.endPoint.x;
-    const endZ = partition.endPoint.z;
-    
-    // Calculate wall length and angle
-    const wallLength = Math.sqrt(
-      Math.pow(endX - startX, 2) + Math.pow(endZ - startZ, 2)
-    );
-    const wallAngle = Math.atan2(endZ - startZ, endX - startX);
-    
-    // Calculate wall height
-    const actualHeight = partition.extendToRoof ? buildingHeight : partition.height;
-    
-    console.log(`Creating partition wall: ${wallLength.toFixed(2)}ft long, ${actualHeight.toFixed(2)}ft high, angle: ${(wallAngle * 180 / Math.PI).toFixed(2)}°`);
-    
-    // Create wall geometry
-    const geometry = new THREE.BoxGeometry(wallLength, actualHeight, partition.thickness);
-    
-    // Position and rotate the wall
-    const centerX = (startX + endX) / 2;
-    const centerZ = (startZ + endZ) / 2;
-    
-    // Create a transformation matrix
-    const matrix = new THREE.Matrix4();
-    
-    // First translate to origin
-    matrix.makeTranslation(-wallLength/2, -actualHeight/2, -partition.thickness/2);
-    
-    // Apply rotation around Y axis
-    const rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeRotationY(wallAngle);
-    matrix.multiply(rotationMatrix);
-    
-    // Translate to final position
-    const translationMatrix = new THREE.Matrix4();
-    translationMatrix.makeTranslation(centerX, actualHeight/2, centerZ);
-    matrix.multiply(translationMatrix);
-    
-    // Apply transformation
-    geometry.applyMatrix4(matrix);
-    
-    return geometry;
-  }, [partition, buildingHeight]);
+  // Reference to the wall mesh for animation
+  const wallRef = useRef<THREE.Mesh>(null);
   
-  // Create material for the wall
+  // Create profile-specific textured material
   const wallMaterial = useMemo(() => {
-    const materialProps = PARTITION_MATERIALS[partition.material] || PARTITION_MATERIALS.wood_planks;
-    
-    // Create material-specific texture
+    const textureWidth = 1024;
+    const textureHeight = 1024;
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
+    canvas.width = textureWidth;
+    canvas.height = textureHeight;
     const ctx = canvas.getContext('2d');
     
     if (ctx) {
-      // Base color
-      ctx.fillStyle = partition.color || materialProps.color;
-      ctx.fillRect(0, 0, 512, 512);
+      // Base color fill
+      ctx.fillStyle = partition.color;
+      ctx.fillRect(0, 0, textureWidth, textureHeight);
+      
+      // Material-specific patterns
+      const materialProps = PARTITION_MATERIALS[partition.material] || PARTITION_MATERIALS.wood_planks;
       
       // Add material-specific patterns
       switch (partition.material) {
@@ -229,10 +188,110 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
     });
   }, [partition.material, partition.color]);
   
+  // Calculate wall geometry
+  const wallGeometry = useMemo(() => {
+    const startX = partition.startPoint.x;
+    const startZ = partition.startPoint.z;
+    const endX = partition.endPoint.x;
+    const endZ = partition.endPoint.z;
+    
+    // Calculate wall length and angle
+    const wallLength = Math.sqrt(
+      Math.pow(endX - startX, 2) + Math.pow(endZ - startZ, 2)
+    );
+    const wallAngle = Math.atan2(endZ - startZ, endX - startX);
+    
+    // Calculate wall height
+    const actualHeight = partition.extendToRoof ? buildingHeight : partition.currentHeight;
+    
+    console.log(`Creating partition wall: ${wallLength.toFixed(2)}ft long, ${actualHeight.toFixed(2)}ft high, angle: ${(wallAngle * 180 / Math.PI).toFixed(2)}°`);
+    
+    // Create wall geometry
+    const geometry = new THREE.BoxGeometry(wallLength, actualHeight, partition.thickness);
+    
+    // Position and rotate the wall
+    const centerX = (startX + endX) / 2;
+    const centerZ = (startZ + endZ) / 2;
+    
+    // Create a transformation matrix
+    const matrix = new THREE.Matrix4();
+    
+    // First translate to origin
+    matrix.makeTranslation(-wallLength/2, -actualHeight/2, -partition.thickness/2);
+    
+    // Apply rotation around Y axis
+    const rotationMatrix = new THREE.Matrix4();
+    rotationMatrix.makeRotationY(wallAngle);
+    matrix.multiply(rotationMatrix);
+    
+    // Translate to final position
+    const translationMatrix = new THREE.Matrix4();
+    translationMatrix.makeTranslation(centerX, actualHeight/2, centerZ);
+    matrix.multiply(translationMatrix);
+    
+    // Apply transformation
+    geometry.applyMatrix4(matrix);
+    
+    return geometry;
+  }, [
+    partition.startPoint, 
+    partition.endPoint, 
+    partition.currentHeight, 
+    partition.thickness, 
+    partition.extendToRoof, 
+    buildingHeight
+  ]);
+  
   const handleClick = (event: any) => {
     event.stopPropagation();
     onWallClick?.(partition.id);
   };
+  
+  // Animate wall height changes
+  useFrame(() => {
+    if (!wallRef.current) return;
+    
+    // Only animate if not locked and current height doesn't match target
+    if (!partition.isLocked && partition.currentHeight !== partition.targetHeight) {
+      // Get the current scale
+      const currentScale = wallRef.current.scale.y;
+      
+      // Calculate the target scale
+      const targetScale = partition.targetHeight / partition.height;
+      
+      // Calculate the step size based on speed (1-10)
+      const speedFactor = partition.speed / 5; // Convert 1-10 to 0.2-2.0
+      const step = Math.abs(targetScale - currentScale) * 0.1 * speedFactor;
+      
+      // Move towards target
+      if (Math.abs(targetScale - currentScale) < 0.01) {
+        // Close enough, snap to target
+        wallRef.current.scale.y = targetScale;
+        
+        // Update the current height in the store
+        if (onWallClick) {
+          // We're using onWallClick as a proxy to access the store
+          // In a real implementation, you'd use a dedicated update function
+          const updatedPartition = {
+            ...partition,
+            currentHeight: partition.targetHeight
+          };
+          // This would be the proper way to update the store
+          // updatePartitionWall(partition.id, updatedPartition);
+        }
+      } else if (currentScale < targetScale) {
+        // Raising wall
+        wallRef.current.scale.y = Math.min(currentScale + step, targetScale);
+      } else {
+        // Lowering wall
+        wallRef.current.scale.y = Math.max(currentScale - step, targetScale);
+      }
+      
+      // Update position to keep bottom at ground level
+      const newHeight = partition.height * wallRef.current.scale.y;
+      wallRef.current.position.y = newHeight / 2;
+    }
+  });
   
   // Calculate wall position and dimensions for features
   const wallInfo = useMemo(() => {
@@ -256,10 +315,20 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
     };
   }, [partition.startPoint, partition.endPoint]);
   
+  // Initialize scale to match current height ratio
+  useEffect(() => {
+    if (wallRef.current) {
+      const initialScale = partition.currentHeight / partition.height;
+      wallRef.current.scale.y = initialScale;
+      wallRef.current.position.y = partition.currentHeight / 2;
+    }
+  }, [partition.currentHeight, partition.height]);
+  
   return (
     <group>
       {/* Main wall structure */}
       <mesh
+        ref={wallRef}
         geometry={wallGeometry}
         material={wallMaterial}
         castShadow
@@ -300,7 +369,7 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
       {/* Wall label for identification */}
       <group position={[
         wallInfo.centerX,
-        (partition.extendToRoof ? buildingHeight : partition.height) / 2,
+        (partition.extendToRoof ? buildingHeight : partition.currentHeight) / 2,
         wallInfo.centerZ
       ]}>
         <mesh rotation={[0, wallInfo.angle, 0]}>
@@ -308,6 +377,29 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
           <meshBasicMaterial color="#ff0000" opacity={0.5} transparent />
         </mesh>
       </group>
+      
+      {/* Control indicators */}
+      {isSelected && (
+        <group position={[
+          wallInfo.centerX,
+          partition.currentHeight + 1,
+          wallInfo.centerZ
+        ]}>
+          {/* Height indicator */}
+          <mesh rotation={[0, wallInfo.angle, 0]}>
+            <boxGeometry args={[0.2, 0.2, 0.2]} />
+            <meshBasicMaterial color={partition.isLocked ? "#ff0000" : "#00ff00"} />
+          </mesh>
+          
+          {/* Status text */}
+          <group position={[0, 0.5, 0]}>
+            <mesh rotation={[0, wallInfo.angle, 0]}>
+              <planeGeometry args={[3, 0.5]} />
+              <meshBasicMaterial color="#ffffff" transparent opacity={0.7} />
+            </mesh>
+          </group>
+        </group>
+      )}
     </group>
   );
 };
