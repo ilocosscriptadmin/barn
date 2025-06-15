@@ -73,6 +73,9 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
   onWallClick, 
   isSelected = false 
 }) => {
+  console.log("Rendering partition wall:", partition.name);
+  
+  // Calculate wall geometry
   const wallGeometry = useMemo(() => {
     const startX = partition.startPoint.x;
     const startZ = partition.startPoint.z;
@@ -88,57 +91,38 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
     // Calculate wall height
     const actualHeight = partition.extendToRoof ? buildingHeight : partition.height;
     
-    console.log(`Creating partition wall: ${wallLength.toFixed(2)}ft long, ${actualHeight.toFixed(2)}ft high`);
+    console.log(`Creating partition wall: ${wallLength.toFixed(2)}ft long, ${actualHeight.toFixed(2)}ft high, angle: ${(wallAngle * 180 / Math.PI).toFixed(2)}°`);
     
-    // Create base wall geometry
-    const wallShape = new THREE.Shape();
-    wallShape.moveTo(0, 0);
-    wallShape.lineTo(wallLength, 0);
-    wallShape.lineTo(wallLength, actualHeight);
-    wallShape.lineTo(0, actualHeight);
-    wallShape.closePath();
-    
-    // Create cutouts for features (doors, windows)
-    partition.features.forEach(feature => {
-      const featureX = feature.position * wallLength;
-      const featureY = feature.bottomOffset;
-      
-      // Ensure feature fits within wall bounds
-      const maxFeatureWidth = Math.min(feature.width, wallLength - featureX);
-      const maxFeatureHeight = Math.min(feature.height, actualHeight - featureY);
-      
-      if (maxFeatureWidth > 0 && maxFeatureHeight > 0) {
-        const featureHole = new THREE.Path();
-        featureHole.moveTo(featureX, featureY);
-        featureHole.lineTo(featureX + maxFeatureWidth, featureY);
-        featureHole.lineTo(featureX + maxFeatureWidth, featureY + maxFeatureHeight);
-        featureHole.lineTo(featureX, featureY + maxFeatureHeight);
-        featureHole.closePath();
-        
-        wallShape.holes.push(featureHole);
-        console.log(`  Added ${feature.type} cutout: ${maxFeatureWidth.toFixed(2)}ft × ${maxFeatureHeight.toFixed(2)}ft`);
-      }
-    });
-    
-    const extrudeSettings = {
-      steps: 1,
-      depth: partition.thickness,
-      bevelEnabled: false
-    };
-    
-    const geometry = new THREE.ExtrudeGeometry(wallShape, extrudeSettings);
+    // Create wall geometry
+    const geometry = new THREE.BoxGeometry(wallLength, actualHeight, partition.thickness);
     
     // Position and rotate the wall
     const centerX = (startX + endX) / 2;
     const centerZ = (startZ + endZ) / 2;
     
-    geometry.translate(-wallLength / 2, 0, -partition.thickness / 2);
-    geometry.rotateY(wallAngle);
-    geometry.translate(centerX, actualHeight / 2, centerZ);
+    // Create a transformation matrix
+    const matrix = new THREE.Matrix4();
+    
+    // First translate to origin
+    matrix.makeTranslation(-wallLength/2, -actualHeight/2, -partition.thickness/2);
+    
+    // Apply rotation around Y axis
+    const rotationMatrix = new THREE.Matrix4();
+    rotationMatrix.makeRotationY(wallAngle);
+    matrix.multiply(rotationMatrix);
+    
+    // Translate to final position
+    const translationMatrix = new THREE.Matrix4();
+    translationMatrix.makeTranslation(centerX, actualHeight/2, centerZ);
+    matrix.multiply(translationMatrix);
+    
+    // Apply transformation
+    geometry.applyMatrix4(matrix);
     
     return geometry;
   }, [partition, buildingHeight]);
   
+  // Create material for the wall
   const wallMaterial = useMemo(() => {
     const materialProps = PARTITION_MATERIALS[partition.material] || PARTITION_MATERIALS.wood_planks;
     
@@ -250,6 +234,28 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
     onWallClick?.(partition.id);
   };
   
+  // Calculate wall position and dimensions for features
+  const wallInfo = useMemo(() => {
+    const startX = partition.startPoint.x;
+    const startZ = partition.startPoint.z;
+    const endX = partition.endPoint.x;
+    const endZ = partition.endPoint.z;
+    
+    const wallLength = Math.sqrt(
+      Math.pow(endX - startX, 2) + Math.pow(endZ - startZ, 2)
+    );
+    const wallAngle = Math.atan2(endZ - startZ, endX - startX);
+    const centerX = (startX + endX) / 2;
+    const centerZ = (startZ + endZ) / 2;
+    
+    return {
+      length: wallLength,
+      angle: wallAngle,
+      centerX,
+      centerZ
+    };
+  }, [partition.startPoint, partition.endPoint]);
+  
   return (
     <group>
       {/* Main wall structure */}
@@ -293,13 +299,13 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
       
       {/* Wall label for identification */}
       <group position={[
-        (partition.startPoint.x + partition.endPoint.x) / 2,
-        (partition.extendToRoof ? buildingHeight : partition.height) + 1,
-        (partition.startPoint.z + partition.endPoint.z) / 2
+        wallInfo.centerX,
+        (partition.extendToRoof ? buildingHeight : partition.height) / 2,
+        wallInfo.centerZ
       ]}>
-        <mesh>
-          <planeGeometry args={[4, 1]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.9} />
+        <mesh rotation={[0, wallInfo.angle, 0]}>
+          <boxGeometry args={[0.5, 0.5, 0.5]} />
+          <meshBasicMaterial color="#ff0000" opacity={0.5} transparent />
         </mesh>
       </group>
     </group>

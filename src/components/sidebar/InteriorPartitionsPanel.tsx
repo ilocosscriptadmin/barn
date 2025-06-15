@@ -30,8 +30,8 @@ const InteriorPartitionsPanel: React.FC = () => {
   const [showWallCreator, setShowWallCreator] = useState(false);
   const [newWall, setNewWall] = useState({
     name: '',
-    startPoint: { x: 0, z: 0 },
-    endPoint: { x: 10, z: 0 },
+    startPoint: { x: -dimensions.width/4, z: -dimensions.length/4 },
+    endPoint: { x: dimensions.width/4, z: -dimensions.length/4 },
     height: 8,
     thickness: 0.5,
     material: 'wood_planks' as PartitionMaterial,
@@ -69,8 +69,8 @@ const InteriorPartitionsPanel: React.FC = () => {
     addPartitionWall(wall);
     setNewWall({
       name: '',
-      startPoint: { x: 0, z: 0 },
-      endPoint: { x: 10, z: 0 },
+      startPoint: { x: -dimensions.width/4, z: -dimensions.length/4 },
+      endPoint: { x: dimensions.width/4, z: -dimensions.length/4 },
       height: 8,
       thickness: 0.5,
       material: 'wood_planks',
@@ -100,6 +100,24 @@ const InteriorPartitionsPanel: React.FC = () => {
 
   const selectedWallData = selectedWall ? 
     interiorLayout?.partitionWalls.find(w => w.id === selectedWall) : null;
+
+  // Add a sample wall if none exist
+  const handleAddSampleWall = () => {
+    const sampleWall: Omit<PartitionWall, 'id'> = {
+      name: 'Sample Divider Wall',
+      startPoint: { x: -dimensions.width/4, z: 0 },
+      endPoint: { x: dimensions.width/4, z: 0 },
+      height: 8,
+      thickness: 0.5,
+      material: 'wood_planks',
+      extendToRoof: false,
+      color: '#8B4513',
+      features: [],
+      isLoadBearing: false
+    };
+    
+    addPartitionWall(sampleWall);
+  };
 
   return (
     <motion.div 
@@ -354,59 +372,67 @@ const InteriorPartitionsPanel: React.FC = () => {
 
         {/* Existing Walls List */}
         <div className="space-y-2 max-h-60 overflow-y-auto">
-          {interiorLayout?.partitionWalls.map((wall) => (
-            <div 
-              key={wall.id}
-              className={`border rounded-lg p-2 cursor-pointer transition-all ${
-                selectedWall === wall.id 
-                  ? 'bg-blue-50 border-blue-200' 
-                  : 'bg-white border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setSelectedWall(selectedWall === wall.id ? null : wall.id)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div 
-                    className="w-3 h-3 rounded"
-                    style={{ backgroundColor: wall.color }}
-                  />
-                  <span className="text-sm font-medium">{wall.name}</span>
-                  <span className="text-xs text-gray-500">
-                    ({wall.features.length} features)
-                  </span>
+          {interiorLayout?.partitionWalls.length > 0 ? (
+            interiorLayout.partitionWalls.map((wall) => (
+              <div 
+                key={wall.id}
+                className={`border rounded-lg p-2 cursor-pointer transition-all ${
+                  selectedWall === wall.id 
+                    ? 'bg-blue-50 border-blue-200' 
+                    : 'bg-white border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setSelectedWall(selectedWall === wall.id ? null : wall.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div 
+                      className="w-3 h-3 rounded"
+                      style={{ backgroundColor: wall.color }}
+                    />
+                    <span className="text-sm font-medium">{wall.name}</span>
+                    <span className="text-xs text-gray-500">
+                      ({wall.features.length} features)
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingWall(wall.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removePartitionWall(wall.id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-600 rounded"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
                 
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingWall(wall.id);
-                    }}
-                    className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removePartitionWall(wall.id);
-                    }}
-                    className="p-1 text-gray-400 hover:text-red-600 rounded"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                <div className="text-xs text-gray-600 mt-1">
+                  {materialOptions.find(m => m.value === wall.material)?.label} • 
+                  {wall.height}ft high • 
+                  {wall.extendToRoof ? 'Extends to roof' : 'Partial height'}
                 </div>
               </div>
-              
-              <div className="text-xs text-gray-600 mt-1">
-                {materialOptions.find(m => m.value === wall.material)?.label} • 
-                {wall.height}ft high • 
-                {wall.extendToRoof ? 'Extends to roof' : 'Partial height'}
-              </div>
-            </div>
-          )) || (
+            ))
+          ) : (
             <div className="text-center py-4 text-gray-500 text-sm">
-              No partition walls created yet
+              <p>No partition walls created yet</p>
+              <button 
+                onClick={handleAddSampleWall}
+                className="mt-2 text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Add Sample Wall
+              </button>
             </div>
           )}
         </div>

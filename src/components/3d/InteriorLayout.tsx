@@ -2,12 +2,13 @@ import React from 'react';
 import { useBuildingStore } from '../../store/buildingStore';
 import PartitionWall3D from './PartitionWall';
 import StallMarkers from './StallMarkers';
-import type { InteriorLayout as InteriorLayoutType } from '../../types/partitions';
+import type { InteriorLayout as InteriorLayoutType, VisualizationSettings } from '../../types/partitions';
+import * as THREE from 'three';
 
 interface InteriorLayoutProps {
   interiorLayout: InteriorLayoutType;
   buildingDimensions: any;
-  visualizationSettings: any;
+  visualizationSettings: VisualizationSettings;
   selectedPartition?: string;
   onPartitionClick?: (partitionId: string) => void;
 }
@@ -19,9 +20,13 @@ const InteriorLayout: React.FC<InteriorLayoutProps> = ({
   selectedPartition,
   onPartitionClick
 }) => {
+  // If partition walls are hidden in visualization settings, don't render anything
   if (!visualizationSettings.showPartitionWalls) {
+    console.log("Partition walls are hidden in visualization settings");
     return null;
   }
+
+  console.log("Rendering interior layout with", interiorLayout.partitionWalls.length, "partition walls");
 
   return (
     <group>
@@ -37,7 +42,7 @@ const InteriorLayout: React.FC<InteriorLayoutProps> = ({
       ))}
       
       {/* Stall markers and labels */}
-      {visualizationSettings.showStallLabels && (
+      {visualizationSettings.showStallLabels && interiorLayout.stallConfiguration.length > 0 && (
         <StallMarkers 
           stalls={interiorLayout.stallConfiguration}
           accessPaths={interiorLayout.accessPaths}
@@ -54,6 +59,7 @@ const InteriorLayout: React.FC<InteriorLayoutProps> = ({
               0.01,
               (stall.bounds.minZ + stall.bounds.maxZ) / 2
             ]}
+            rotation={[-Math.PI / 2, 0, 0]}
             receiveShadow
           >
             <planeGeometry 
@@ -73,8 +79,9 @@ const InteriorLayout: React.FC<InteriorLayoutProps> = ({
           <lineSegments>
             <edgesGeometry 
               args={[
-                new THREE.PlaneGeometry(
+                new THREE.BoxGeometry(
                   stall.bounds.maxX - stall.bounds.minX,
+                  0.01,
                   stall.bounds.maxZ - stall.bounds.minZ
                 )
               ]} 

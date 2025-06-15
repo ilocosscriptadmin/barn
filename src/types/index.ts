@@ -284,6 +284,12 @@ export interface BuildingCodeRequirements {
   insulationSpace: number; // feet for insulation thickness
 }
 
+// Import partition types
+import type { 
+  InteriorLayout, 
+  VisualizationSettings 
+} from './partitions';
+
 // Building state
 export interface Building {
   dimensions: BuildingDimensions;
@@ -294,6 +300,8 @@ export interface Building {
   wallProfile: WallProfile;
   wallBoundsProtection?: Map<WallPosition, WallBoundsProtection>;
   spaceLayout?: SpaceLayoutDetection;
+  interiorLayout?: InteriorLayout;
+  visualizationSettings?: VisualizationSettings;
 }
 
 // Project info
@@ -362,4 +370,12 @@ export interface BuildingStore {
   getFeatureClearanceZones: (featureId: string) => ClearanceZone[];
   checkAccessPaths: () => AccessPath[];
   validateVentilation: () => VentilationArea[];
+  
+  // Interior partition actions
+  addPartitionWall: (wall: Omit<import('./partitions').PartitionWall, 'id'>) => void;
+  updatePartitionWall: (id: string, updates: Partial<import('./partitions').PartitionWall>) => void;
+  removePartitionWall: (id: string) => void;
+  addPartitionFeature: (wallId: string, feature: Omit<import('./partitions').PartitionFeature, 'id'>) => void;
+  updateVisualizationSettings: (settings: Partial<import('./partitions').VisualizationSettings>) => void;
+  addStallConfiguration: (stall: Omit<import('./partitions').StallConfiguration, 'id'>) => void;
 }
