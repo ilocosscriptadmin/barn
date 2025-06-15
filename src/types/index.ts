@@ -58,6 +58,7 @@ export interface BayAccessory {
 
 // Bay connection details
 export interface BayConnection {
+  id: string;
   fromBayId: string;
   toBayId: string;
   connectionType: 'wall-shared' | 'wall-opening' | 'separate';
@@ -305,8 +306,9 @@ export interface WallFeature {
 // Roof panel types
 export type RoofPanel = 'left' | 'right';
 
-// Skylight feature with panel selection
+// Skylight feature with panel selection - add id property
 export interface Skylight {
+  id?: string; // Make id optional for backward compatibility
   width: number;
   length: number;
   xOffset: number; // Distance from panel center (not roof center)
@@ -360,12 +362,12 @@ export interface Building {
   wallLayout?: import('../utils/wallLayoutValidation').WallLayout; // Wall layout system
 }
 
-// Project info
+// Project info - fix property names
 export interface Project {
   id: string;
   name: string;
-  created: Date;
-  lastModified: Date;
+  createdAt: Date; // Changed from 'created'
+  updatedAt: Date; // Changed from 'lastModified'
   building: Building;
 }
 
@@ -392,53 +394,48 @@ export interface BeamSegment {
   width: number;
 }
 
-// Store state
+// Store state - fix function signatures
 export interface BuildingStore {
   currentProject: Project;
-  savedProjects: Project[];
-  currentView: ViewMode;
+  projects: Project[]; // Changed from savedProjects
+  selectedWall: WallPosition | null;
+  viewMode: ViewMode; // Changed from currentView
+  showTechnicalDrawings: boolean;
   
   // Actions
-  setBuilding: (building: Building) => void;
   updateDimensions: (dimensions: Partial<BuildingDimensions>) => void;
   addFeature: (feature: Omit<WallFeature, 'id'>) => void;
   removeFeature: (id: string) => void;
   updateFeature: (id: string, updates: Partial<Omit<WallFeature, 'id'>>) => void;
   addSkylight: (skylight: Skylight) => void;
-  removeSkylight: (index: number) => void;
-  updateSkylight: (index: number, updates: Partial<Skylight>) => void;
-  setColor: (color: string) => void;
-  setRoofColor: (color: string) => void;
+  removeSkylight: (id: string) => void; // Changed from index to id
+  updateSkylight: (id: string, updates: Partial<Skylight>) => void; // Changed from index to id
+  updateColors: (colors: { color?: string; roofColor?: string }) => void;
+  updateWallProfile: (profile: WallProfile) => void;
   setWallProfile: (profile: WallProfile) => void;
-  setCurrentView: (view: ViewMode) => void;
+  setSelectedWall: (wall: WallPosition | null) => void;
+  setViewMode: (view: ViewMode) => void;
+  toggleTechnicalDrawings: () => void;
   saveProject: () => void;
   loadProject: (id: string) => void;
-  createNewProject: (name?: string) => void;
+  createProject: (name?: string) => Project;
+  deleteProject: (projectId: string) => void;
   
   // Bay system actions
   addBay: (bay: Omit<BaySection, 'id'>) => void;
   removeBay: (bayId: string) => void;
   updateBay: (bayId: string, updates: Partial<BaySection>) => void;
-  setActiveBay: (bayId: string | null) => void;
-  duplicateBay: (bayId: string) => void;
-  addBayAccessory: (bayId: string, accessory: Omit<BayAccessory, 'id'>) => void;
-  removeBayAccessory: (bayId: string, accessoryId: string) => void;
-  updateBayAccessory: (bayId: string, accessoryId: string, updates: Partial<BayAccessory>) => void;
-  connectBays: (connection: BayConnection) => void;
-  disconnectBays: (fromBayId: string, toBayId: string) => void;
+  setActiveBay: (bayId: string | undefined) => void;
+  addBayConnection: (connection: Omit<BayConnection, 'id'>) => void;
+  removeBayConnection: (connectionId: string) => void;
   
   // Wall layout actions
   updateWallLayout: (wallLayout: import('../utils/wallLayoutValidation').WallLayout) => void;
+  updateWallBoundsProtection: (wallPosition: WallPosition, protection: WallBoundsProtection) => void;
+  updateSpaceLayout: (layout: SpaceLayoutDetection) => void;
   
   // Wall bounds protection actions
   checkWallBoundsLock: (wallPosition: WallPosition, proposedDimensions: Partial<BuildingDimensions>) => { canModify: boolean; restrictions: string[] };
   getWallProtectionStatus: (wallPosition: WallPosition) => WallBoundsProtection | null;
   overrideWallLock: (wallPosition: WallPosition, reason: string) => boolean;
-  
-  // Space layout detection actions
-  scanSpaceLayout: () => SpaceLayoutDetection;
-  validateSpaceModification: (proposedDimensions: Partial<BuildingDimensions>) => { canModify: boolean; violations: string[]; suggestions: string[] };
-  getFeatureClearanceZones: (featureId: string) => ClearanceZone[];
-  checkAccessPaths: () => AccessPath[];
-  validateVentilation: () => VentilationArea[];
 }

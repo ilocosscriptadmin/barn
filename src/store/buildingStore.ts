@@ -307,5 +307,81 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
       },
       updatedAt: new Date()
     }
+  })),
+
+  // Wall bounds protection actions - implement missing functions
+  checkWallBoundsLock: (wallPosition, proposedDimensions) => {
+    const state = get();
+    const protection = state.currentProject.building.wallBoundsProtection?.get(wallPosition);
+    
+    if (!protection) {
+      return { canModify: true, restrictions: [] };
+    }
+
+    // Check if proposed dimensions would violate any locked segments
+    const restrictions: string[] = [];
+    let canModify = true;
+
+    protection.protectedSegments.forEach(segment => {
+      if (segment.lockType === 'full') {
+        canModify = false;
+        restrictions.push(`Wall segment ${segment.segmentId} is fully locked: ${segment.lockReason}`);
+      } else if (segment.lockType === 'dimensional') {
+        // Check if dimensional changes would affect this segment
+        restrictions.push(`Dimensional changes may affect ${segment.segmentId}: ${segment.lockReason}`);
+      }
+    });
+
+    return { canModify, restrictions };
+  },
+
+  getWallProtectionStatus: (wallPosition) => {
+    const state = get();
+    return state.currentProject.building.wallBoundsProtection?.get(wallPosition) || null;
+  },
+
+  overrideWallLock: (wallPosition, reason) => {
+    const state = get();
+    const protection = state.currentProject.building.wallBoundsProtection?.get(wallPosition);
+    
+    if (!protection) {
+      return true; // No lock to override
+    }
+
+    // Check if override is allowed
+    const canOverride = protection.protectedSegments.every(segment => segment.canModify);
+    
+    if (canOverride) {
+      // Remove the protection for this wall
+      const newProtection = new Map(state.currentProject.building.wallBoundsProtection);
+      newProtection.delete(wallPosition);
+      
+      set((state) => ({
+        currentProject: {
+          ...state.currentProject,
+          building: {
+            ...state.currentProject.building,
+            wallBoundsProtection: newProtection
+          },
+          updatedAt: new Date()
+        }
+      }));
+      
+      return true;
+    }
+    
+    return false;
+  },
+
+  // Add missing setWallProfile action
+  setWallProfile: (profile) => set((state) => ({
+    currentProject: {
+      ...state.currentProject,
+      building: {
+        ...state.currentProject.building,
+        wallProfile: profile
+      },
+      updatedAt: new Date()
+    }
   }))
 }));
