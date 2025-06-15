@@ -357,6 +357,7 @@ export interface Building {
   bays: BaySection[]; // New bay system
   activeBayId?: string; // Currently selected bay
   bayConnections: BayConnection[]; // Connections between bays
+  wallLayout?: import('../utils/wallLayoutValidation').WallLayout; // Wall layout system
 }
 
 // Project info
@@ -425,6 +426,9 @@ export interface BuildingStore {
   updateBayAccessory: (bayId: string, accessoryId: string, updates: Partial<BayAccessory>) => void;
   connectBays: (connection: BayConnection) => void;
   disconnectBays: (fromBayId: string, toBayId: string) => void;
+  
+  // Wall layout actions
+  updateWallLayout: (wallLayout: import('../utils/wallLayoutValidation').WallLayout) => void;
   
   // Wall bounds protection actions
   checkWallBoundsLock: (wallPosition: WallPosition, proposedDimensions: Partial<BuildingDimensions>) => { canModify: boolean; restrictions: string[] };

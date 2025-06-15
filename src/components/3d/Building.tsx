@@ -5,9 +5,20 @@ import Wall from './Wall';
 import Roof from './Roof';
 import WallFeature from './WallFeature';
 import BaySection from './BaySection';
+import InteriorWalls from './InteriorWalls';
 
 const Building: React.FC = () => {
-  const { dimensions, features, color, roofColor, skylights, wallProfile, bays, activeBayId } = useBuildingStore((state) => ({
+  const { 
+    dimensions, 
+    features, 
+    color, 
+    roofColor, 
+    skylights, 
+    wallProfile, 
+    bays, 
+    activeBayId,
+    wallLayout 
+  } = useBuildingStore((state) => ({
     dimensions: state.currentProject.building.dimensions,
     features: state.currentProject.building.features,
     color: state.currentProject.building.color,
@@ -15,7 +26,8 @@ const Building: React.FC = () => {
     skylights: state.currentProject.building.skylights,
     wallProfile: state.currentProject.building.wallProfile || 'trimdek',
     bays: state.currentProject.building.bays || [],
-    activeBayId: state.currentProject.building.activeBayId
+    activeBayId: state.currentProject.building.activeBayId,
+    wallLayout: state.currentProject.building.wallLayout
   }));
   
   const halfWidth = dimensions.width / 2;
@@ -114,6 +126,15 @@ const Building: React.FC = () => {
             buildingDimensions={dimensions}
           />
         ))}
+
+        {/* Interior Walls from Wall Layout Design */}
+        {wallLayout && wallLayout.wallSegments && (
+          <InteriorWalls
+            wallSegments={wallLayout.wallSegments}
+            roomHeight={dimensions.height}
+            roomLength={dimensions.length}
+          />
+        )}
       </group>
 
       {/* Additional Bay Sections */}

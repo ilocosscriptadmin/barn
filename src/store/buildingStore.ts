@@ -4,6 +4,7 @@ import { validateWallHeights } from '../utils/wallHeightValidation';
 import { isValidFeaturePosition } from '../utils/wallBoundsValidation';
 import { isValidSkylightPosition } from '../utils/skylightValidation';
 import { validateRoomDimensions, enforceMinimumDimensions, STANDARD_ROOM_CONSTRAINTS } from '../utils/roomConstraints';
+import { createDefaultWallLayout } from '../utils/wallLayoutValidation';
 import { 
   validateWallDimensionChange, 
   getWallProtectionStatus, 
@@ -38,6 +39,7 @@ import type {
   BayAccessory,
   BayConnection
 } from '../types';
+import type { WallLayout } from '../utils/wallLayoutValidation';
 
 // Default initial building with minimum room constraints
 const defaultBuilding = {
@@ -56,7 +58,8 @@ const defaultBuilding = {
   spaceLayout: undefined as SpaceLayoutDetection | undefined,
   bays: [] as BaySection[], // Initialize empty bay system
   activeBayId: undefined as string | undefined,
-  bayConnections: [] as BayConnection[]
+  bayConnections: [] as BayConnection[],
+  wallLayout: undefined as WallLayout | undefined // Add wall layout
 };
 
 // Create a default project with validated dimensions
@@ -68,6 +71,12 @@ const createDefaultProject = (): Project => {
     STANDARD_ROOM_CONSTRAINTS
   );
 
+  // Create default wall layout
+  const defaultWallLayout = createDefaultWallLayout(
+    validatedDimensions.width,
+    validatedDimensions.length
+  );
+
   return {
     id: uuidv4(),
     name: 'New Barn',
@@ -75,7 +84,8 @@ const createDefaultProject = (): Project => {
     lastModified: new Date(),
     building: { 
       ...defaultBuilding,
-      dimensions: validatedDimensions
+      dimensions: validatedDimensions,
+      wallLayout: defaultWallLayout
     },
   };
 };
@@ -115,6 +125,11 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
       }
       if (!building.bayConnections) {
         building.bayConnections = [];
+      }
+
+      // Initialize wall layout if not present
+      if (!building.wallLayout) {
+        building.wallLayout = createDefaultWallLayout(building.dimensions.width, building.dimensions.length);
       }
 
       // Validate height constraints for all features
@@ -290,6 +305,12 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         }
       });
 
+      // Update wall layout if dimensions changed
+      let updatedWallLayout = state.currentProject.building.wallLayout;
+      if (dimensions.width !== undefined || dimensions.length !== undefined) {
+        updatedWallLayout = createDefaultWallLayout(enforcedDimensions.width, enforcedDimensions.length);
+      }
+
       console.log(`✅ Final dimensions: ${enforcedDimensions.width}ft × ${enforcedDimensions.length}ft × ${enforcedDimensions.height}ft`);
 
       return {
@@ -300,7 +321,8 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
             ...state.currentProject.building,
             dimensions: enforcedDimensions,
             wallBoundsProtection: updatedWallBoundsProtection,
-            spaceLayout: updatedSpaceLayout
+            spaceLayout: updatedSpaceLayout,
+            wallLayout: updatedWallLayout
           },
         },
       };
@@ -889,6 +911,19 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         },
       };
     }),
+
+  // Update wall layout
+  updateWallLayout: (wallLayout: WallLayout) =>
+    set((state) => ({
+      currentProject: {
+        ...state.currentProject,
+        lastModified: new Date(),
+        building: {
+          ...state.currentProject.building,
+          wallLayout,
+        },
+      },
+    })),
 
   // 🔒 WALL BOUNDS PROTECTION METHODS
 
