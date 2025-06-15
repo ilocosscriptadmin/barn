@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2, Move, Eye, EyeOff, Settings, Grid, Home, DoorOpen } from 'lucide-react';
+import { Plus, Edit2, Trash2, Move, Eye, EyeOff, Settings, Grid, Home, DoorOpen, Anchor, ArrowDown, ArrowUp } from 'lucide-react';
 import { useBuildingStore } from '../../store/buildingStore';
 import type { PartitionWall, PartitionFeature, PartitionMaterial, StallConfiguration } from '../../types/partitions';
 
@@ -29,14 +29,16 @@ const InteriorPartitionsPanel: React.FC = () => {
   const [editingWall, setEditingWall] = useState<string | null>(null);
   const [showWallCreator, setShowWallCreator] = useState(false);
   const [newWall, setNewWall] = useState({
-    name: '',
-    startPoint: { x: -dimensions.width/4, z: -dimensions.length/4 },
-    endPoint: { x: dimensions.width/4, z: -dimensions.length/4 },
-    height: 8,
+    name: 'Underground Anchored Wall',
+    startPoint: { x: -dimensions.width/4, z: 0 },
+    endPoint: { x: dimensions.width/4, z: 0 },
+    height: dimensions.height + 2, // Extra height for underground extension
     thickness: 0.5,
-    material: 'wood_planks' as PartitionMaterial,
-    extendToRoof: false,
-    color: '#8B4513'
+    material: 'concrete_block' as PartitionMaterial,
+    extendToRoof: true,
+    color: '#A9A9A9',
+    undergroundExtension: 2, // 2 feet below ground
+    isAnchored: true
   });
 
   const materialOptions = [
@@ -63,19 +65,21 @@ const InteriorPartitionsPanel: React.FC = () => {
     const wall: Omit<PartitionWall, 'id'> = {
       ...newWall,
       features: [],
-      isLoadBearing: false
+      isLoadBearing: true // Set to true for underground anchored walls
     };
 
     addPartitionWall(wall);
     setNewWall({
-      name: '',
-      startPoint: { x: -dimensions.width/4, z: -dimensions.length/4 },
-      endPoint: { x: dimensions.width/4, z: -dimensions.length/4 },
-      height: 8,
+      name: 'Underground Anchored Wall',
+      startPoint: { x: -dimensions.width/4, z: 0 },
+      endPoint: { x: dimensions.width/4, z: 0 },
+      height: dimensions.height + 2,
       thickness: 0.5,
-      material: 'wood_planks',
-      extendToRoof: false,
-      color: '#8B4513'
+      material: 'concrete_block',
+      extendToRoof: true,
+      color: '#A9A9A9',
+      undergroundExtension: 2,
+      isAnchored: true
     });
     setShowWallCreator(false);
   };
@@ -101,22 +105,22 @@ const InteriorPartitionsPanel: React.FC = () => {
   const selectedWallData = selectedWall ? 
     interiorLayout?.partitionWalls.find(w => w.id === selectedWall) : null;
 
-  // Add a sample wall if none exist
-  const handleAddSampleWall = () => {
-    const sampleWall: Omit<PartitionWall, 'id'> = {
-      name: 'Sample Divider Wall',
+  // Add a sample underground anchored wall
+  const handleAddUndergroundWall = () => {
+    const anchoredWall: Omit<PartitionWall, 'id'> = {
+      name: 'Underground Anchored Wall',
       startPoint: { x: -dimensions.width/4, z: 0 },
       endPoint: { x: dimensions.width/4, z: 0 },
-      height: 8,
+      height: dimensions.height + 2, // Extra height for underground extension
       thickness: 0.5,
-      material: 'wood_planks',
-      extendToRoof: false,
-      color: '#8B4513',
+      material: 'concrete_block',
+      extendToRoof: true,
+      color: '#A9A9A9',
       features: [],
-      isLoadBearing: false
+      isLoadBearing: true
     };
     
-    addPartitionWall(sampleWall);
+    addPartitionWall(anchoredWall);
   };
 
   return (
@@ -201,6 +205,146 @@ const InteriorPartitionsPanel: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Underground Anchored Wall Section */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+        <div className="flex items-center space-x-2 mb-3">
+          <Anchor className="w-4 h-4 text-green-600" />
+          <span className="text-sm font-medium text-green-800">Underground Anchored Wall</span>
+        </div>
+        
+        <div className="text-xs text-green-700 mb-3">
+          Create a stable partition wall with underground anchoring for maximum stability and security.
+        </div>
+        
+        <div className="flex items-center space-x-2 mb-3">
+          <ArrowDown className="w-4 h-4 text-green-600" />
+          <div className="flex-1">
+            <label className="text-xs text-green-700 block mb-1">
+              Underground Extension (ft)
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="4"
+              step="0.5"
+              value={newWall.undergroundExtension}
+              onChange={(e) => setNewWall({ 
+                ...newWall, 
+                undergroundExtension: parseFloat(e.target.value),
+                height: dimensions.height + parseFloat(e.target.value)
+              })}
+              className="w-full"
+            />
+            <div className="text-xs text-center mt-1">{newWall.undergroundExtension} ft</div>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-2 mb-3">
+          <ArrowUp className="w-4 h-4 text-green-600" />
+          <div className="flex-1">
+            <label className="text-xs text-green-700 block mb-1">
+              Wall Position (left to right)
+            </label>
+            <input
+              type="range"
+              min={-dimensions.width/2 + 1}
+              max={dimensions.width/2 - 1}
+              step="1"
+              value={(newWall.startPoint.x + newWall.endPoint.x) / 2}
+              onChange={(e) => {
+                const centerX = parseFloat(e.target.value);
+                const halfWidth = (newWall.endPoint.x - newWall.startPoint.x) / 2;
+                setNewWall({ 
+                  ...newWall, 
+                  startPoint: { ...newWall.startPoint, x: centerX - halfWidth },
+                  endPoint: { ...newWall.endPoint, x: centerX + halfWidth }
+                });
+              }}
+              className="w-full"
+            />
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-2 mb-3">
+          <Move className="w-4 h-4 text-green-600" />
+          <div className="flex-1">
+            <label className="text-xs text-green-700 block mb-1">
+              Wall Width (ft)
+            </label>
+            <input
+              type="range"
+              min="5"
+              max={dimensions.width - 4}
+              step="1"
+              value={newWall.endPoint.x - newWall.startPoint.x}
+              onChange={(e) => {
+                const width = parseFloat(e.target.value);
+                const centerX = (newWall.startPoint.x + newWall.endPoint.x) / 2;
+                setNewWall({ 
+                  ...newWall, 
+                  startPoint: { ...newWall.startPoint, x: centerX - width/2 },
+                  endPoint: { ...newWall.endPoint, x: centerX + width/2 }
+                });
+              }}
+              className="w-full"
+            />
+            <div className="text-xs text-center mt-1">{newWall.endPoint.x - newWall.startPoint.x} ft</div>
+          </div>
+        </div>
+        
+        <div className="mb-3">
+          <label className="text-xs text-green-700 block mb-1">
+            Wall Material
+          </label>
+          <select
+            value={newWall.material}
+            onChange={(e) => {
+              const material = e.target.value as PartitionMaterial;
+              const materialOption = materialOptions.find(m => m.value === material);
+              setNewWall({ 
+                ...newWall, 
+                material,
+                color: materialOption?.color || '#A9A9A9'
+              });
+            }}
+            className="w-full text-xs p-2 border border-green-200 rounded bg-white"
+          >
+            {materialOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="mb-3">
+          <label className="text-xs text-green-700 block mb-1">
+            Wall Thickness (ft)
+          </label>
+          <select
+            value={newWall.thickness}
+            onChange={(e) => setNewWall({ 
+              ...newWall, 
+              thickness: parseFloat(e.target.value)
+            })}
+            className="w-full text-xs p-2 border border-green-200 rounded bg-white"
+          >
+            <option value="0.33">4 inches (0.33 ft)</option>
+            <option value="0.5">6 inches (0.5 ft)</option>
+            <option value="0.67">8 inches (0.67 ft)</option>
+            <option value="1">12 inches (1 ft)</option>
+          </select>
+        </div>
+        
+        <button
+          onClick={handleAddUndergroundWall}
+          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg flex items-center justify-center space-x-2"
+        >
+          <Anchor className="w-4 h-4" />
+          <span>Add Underground Anchored Wall</span>
+        </button>
       </div>
 
       {/* Partition Walls Management */}
@@ -295,7 +439,7 @@ const InteriorPartitionsPanel: React.FC = () => {
                     value={newWall.height}
                     onChange={(e) => setNewWall({ ...newWall, height: parseFloat(e.target.value) || 8 })}
                     min="1"
-                    max={dimensions.height}
+                    max={dimensions.height + 4}
                     step="0.5"
                     className="form-input text-xs"
                   />
@@ -421,6 +565,7 @@ const InteriorPartitionsPanel: React.FC = () => {
                   {materialOptions.find(m => m.value === wall.material)?.label} • 
                   {wall.height}ft high • 
                   {wall.extendToRoof ? 'Extends to roof' : 'Partial height'}
+                  {wall.undergroundExtension ? ` • ${wall.undergroundExtension}ft underground` : ''}
                 </div>
               </div>
             ))
@@ -428,10 +573,10 @@ const InteriorPartitionsPanel: React.FC = () => {
             <div className="text-center py-4 text-gray-500 text-sm">
               <p>No partition walls created yet</p>
               <button 
-                onClick={handleAddSampleWall}
+                onClick={handleAddUndergroundWall}
                 className="mt-2 text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                Add Sample Wall
+                Add Underground Anchored Wall
               </button>
             </div>
           )}
@@ -496,26 +641,26 @@ const InteriorPartitionsPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Stall Templates */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-        <div className="flex items-center space-x-2 mb-3">
-          <Home className="w-4 h-4 text-green-600" />
-          <span className="text-sm font-medium text-green-800">Quick Stall Templates</span>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-2">
-          <button className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200">
-            🐴 Horse Stalls
-          </button>
-          <button className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200">
-            🐄 Cattle Pens
-          </button>
-          <button className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200">
-            📦 Storage Rooms
-          </button>
-          <button className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded hover:bg-green-200">
-            🌾 Feed Rooms
-          </button>
+      {/* Underground Anchoring Information */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+        <h4 className="text-sm font-medium text-gray-800 mb-2">Underground Anchoring</h4>
+        <div className="text-xs text-gray-600 space-y-1">
+          <div className="flex items-center space-x-2">
+            <Anchor className="w-3 h-3 text-gray-500" />
+            <span>Extends below ground level for stability</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <ArrowDown className="w-3 h-3 text-gray-500" />
+            <span>Concrete footing provides secure foundation</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <ArrowUp className="w-3 h-3 text-gray-500" />
+            <span>Extends to ceiling for maximum security</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Settings className="w-3 h-3 text-gray-500" />
+            <span>Adjustable positioning for flexible layout</span>
+          </div>
         </div>
       </div>
 

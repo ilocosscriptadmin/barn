@@ -75,7 +75,7 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
 }) => {
   console.log("Rendering partition wall:", partition.name);
   
-  // Calculate wall geometry
+  // Calculate wall geometry including underground extension
   const wallGeometry = useMemo(() => {
     const startX = partition.startPoint.x;
     const startZ = partition.startPoint.z;
@@ -88,13 +88,15 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
     );
     const wallAngle = Math.atan2(endZ - startZ, endX - startX);
     
-    // Calculate wall height
+    // Calculate wall height including underground extension if applicable
+    const undergroundExtension = partition.undergroundExtension || 0;
     const actualHeight = partition.extendToRoof ? buildingHeight : partition.height;
+    const totalHeight = actualHeight + undergroundExtension;
     
-    console.log(`Creating partition wall: ${wallLength.toFixed(2)}ft long, ${actualHeight.toFixed(2)}ft high, angle: ${(wallAngle * 180 / Math.PI).toFixed(2)}°`);
+    console.log(`Creating partition wall: ${wallLength.toFixed(2)}ft long, ${totalHeight.toFixed(2)}ft high (${undergroundExtension}ft underground), angle: ${(wallAngle * 180 / Math.PI).toFixed(2)}°`);
     
     // Create wall geometry
-    const geometry = new THREE.BoxGeometry(wallLength, actualHeight, partition.thickness);
+    const geometry = new THREE.BoxGeometry(wallLength, totalHeight, partition.thickness);
     
     // Position and rotate the wall
     const centerX = (startX + endX) / 2;
@@ -104,16 +106,16 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
     const matrix = new THREE.Matrix4();
     
     // First translate to origin
-    matrix.makeTranslation(-wallLength/2, -actualHeight/2, -partition.thickness/2);
+    matrix.makeTranslation(-wallLength/2, -totalHeight/2, -partition.thickness/2);
     
     // Apply rotation around Y axis
     const rotationMatrix = new THREE.Matrix4();
     rotationMatrix.makeRotationY(wallAngle);
     matrix.multiply(rotationMatrix);
     
-    // Translate to final position
+    // Translate to final position, adjusting Y for underground extension
     const translationMatrix = new THREE.Matrix4();
-    translationMatrix.makeTranslation(centerX, actualHeight/2, centerZ);
+    translationMatrix.makeTranslation(centerX, (actualHeight/2) - (undergroundExtension/2), centerZ);
     matrix.multiply(translationMatrix);
     
     // Apply transformation
@@ -229,6 +231,16 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
     });
   }, [partition.material, partition.color]);
   
+  // Create underground foundation material
+  const foundationMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: '#5D4037', // Dark brown concrete color
+      metalness: 0.1,
+      roughness: 0.9,
+      side: THREE.DoubleSide
+    });
+  }, []);
+  
   const handleClick = (event: any) => {
     event.stopPropagation();
     onWallClick?.(partition.id);
@@ -256,6 +268,47 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
     };
   }, [partition.startPoint, partition.endPoint]);
   
+  // Calculate underground extension
+  const undergroundExtension = partition.undergroundExtension || 0;
+  
+  // Create underground anchoring visualization
+  const UndergroundAnchoring = () => {
+    if (!undergroundExtension) return null;
+    
+    const anchorWidth = Math.min(partition.thickness * 3, 2); // Wider than the wall but max 2ft
+    const anchorDepth = Math.min(partition.thickness * 3, 2); // Deeper than the wall but max 2ft
+    
+    return (
+      <group>
+        {/* Underground foundation - wider at the bottom for stability */}
+        <mesh
+          position={[0, -undergroundExtension/2, 0]}
+          geometry={new THREE.BoxGeometry(wallInfo.length, undergroundExtension, anchorWidth)}
+          material={foundationMaterial}
+          castShadow
+          receiveShadow
+        />
+        
+        {/* Anchor points along the foundation */}
+        {Array.from({ length: Math.max(2, Math.floor(wallInfo.length / 4)) }).map((_, i) => {
+          const spacing = wallInfo.length / Math.max(1, Math.floor(wallInfo.length / 4));
+          const xPos = -wallInfo.length/2 + spacing/2 + i * spacing;
+          
+          return (
+            <mesh
+              key={`anchor-${i}`}
+              position={[xPos, -undergroundExtension + 0.5, 0]}
+              geometry={new THREE.CylinderGeometry(0.2, 0.4, 1, 8)}
+              material={foundationMaterial}
+              castShadow
+              receiveShadow
+            />
+          );
+        })}
+      </group>
+    );
+  };
+  
   return (
     <group>
       {/* Main wall structure */}
@@ -274,6 +327,9 @@ const PartitionWall3D: React.FC<PartitionWallProps> = ({
           document.body.style.cursor = 'default';
         }}
       />
+      
+      {/* Underground anchoring */}
+      <UndergroundAnchoring />
       
       {/* Selection highlight */}
       {isSelected && (
