@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, Home, Ruler, Layout, Grid3X3, Palette, Building } from 'lucide-react';
+import { ChevronRight, ChevronDown, Home, Ruler, Layout, Grid3X3, Palette, Building, Eye, Layers } from 'lucide-react';
 import DimensionsPanel from './sidebar/DimensionsPanel';
 import RoofPanel from './sidebar/RoofPanel';
 import WallFeaturesPanel from './sidebar/WallFeaturesPanel';
 import WallLayoutPanel from './sidebar/WallLayoutPanel';
 import ColorsPanel from './sidebar/ColorsPanel';
+import SpaceLayoutPanel from './sidebar/SpaceLayoutPanel';
+import InteriorPartitionsPanel from './sidebar/InteriorPartitionsPanel';
 
-type PanelId = 'dimensions' | 'roof' | 'features' | 'layout' | 'colors';
+type PanelId = 'dimensions' | 'roof' | 'features' | 'layout' | 'colors' | 'spaceLayout' | 'interiorPartitions';
 
 const Sidebar: React.FC = () => {
   const [expandedPanel, setExpandedPanel] = useState<PanelId | null>('dimensions');
@@ -22,6 +24,18 @@ const Sidebar: React.FC = () => {
       title: 'Building Dimensions', 
       icon: <Ruler className="w-5 h-5" />,
       component: <DimensionsPanel />
+    },
+    { 
+      id: 'interiorPartitions' as PanelId, 
+      title: 'Interior Partitions', 
+      icon: <Layers className="w-5 h-5" />,
+      component: <InteriorPartitionsPanel />
+    },
+    { 
+      id: 'spaceLayout' as PanelId, 
+      title: 'Space Layout Detection', 
+      icon: <Eye className="w-5 h-5" />,
+      component: <SpaceLayoutPanel />
     },
     { 
       id: 'layout' as PanelId, 
