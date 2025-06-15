@@ -6,6 +6,66 @@ export interface BuildingDimensions {
   roofPitch: number; // in degrees
 }
 
+// Bay/Section system
+export interface BaySection {
+  id: string;
+  name: string;
+  type: 'main' | 'extension' | 'lean-to' | 'side-bay';
+  dimensions: {
+    width: number;
+    length: number;
+    height: number;
+  };
+  position: {
+    x: number; // Offset from main building center
+    y: number; // Offset from main building center
+    z: number; // Height offset (for different floor levels)
+  };
+  roofType: 'gable' | 'skillion' | 'shed' | 'hip';
+  roofPitch: number;
+  wallProfile: WallProfile;
+  color: string;
+  roofColor: string;
+  features: WallFeature[];
+  skylights: Skylight[];
+  accessories: BayAccessory[];
+  isActive: boolean; // Whether this bay is currently selected/visible
+  parentBayId?: string; // For extensions attached to other bays
+  connectionType?: 'attached' | 'detached' | 'lean-to';
+  connectionWall?: WallPosition; // Which wall this bay connects to
+}
+
+// Bay accessories (equipment, storage, etc.)
+export interface BayAccessory {
+  id: string;
+  type: 'stall' | 'feed-bin' | 'water-trough' | 'equipment-mount' | 'storage-rack' | 'workbench' | 'electrical-panel' | 'lighting' | 'ventilation-fan';
+  name: string;
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  dimensions: {
+    width: number;
+    length: number;
+    height: number;
+  };
+  rotation: number; // Rotation in degrees
+  color?: string;
+  specifications: Record<string, any>;
+  isMoveable: boolean;
+}
+
+// Bay connection details
+export interface BayConnection {
+  fromBayId: string;
+  toBayId: string;
+  connectionType: 'wall-shared' | 'wall-opening' | 'separate';
+  connectionWall: WallPosition;
+  openingWidth?: number; // For wall openings
+  openingHeight?: number;
+}
+
 // Room design constraints
 export interface RoomConstraints {
   minimumWallHeight: number; // feet
@@ -294,6 +354,9 @@ export interface Building {
   wallProfile: WallProfile;
   wallBoundsProtection?: Map<WallPosition, WallBoundsProtection>;
   spaceLayout?: SpaceLayoutDetection;
+  bays: BaySection[]; // New bay system
+  activeBayId?: string; // Currently selected bay
+  bayConnections: BayConnection[]; // Connections between bays
 }
 
 // Project info
@@ -350,6 +413,18 @@ export interface BuildingStore {
   saveProject: () => void;
   loadProject: (id: string) => void;
   createNewProject: (name?: string) => void;
+  
+  // Bay system actions
+  addBay: (bay: Omit<BaySection, 'id'>) => void;
+  removeBay: (bayId: string) => void;
+  updateBay: (bayId: string, updates: Partial<BaySection>) => void;
+  setActiveBay: (bayId: string | null) => void;
+  duplicateBay: (bayId: string) => void;
+  addBayAccessory: (bayId: string, accessory: Omit<BayAccessory, 'id'>) => void;
+  removeBayAccessory: (bayId: string, accessoryId: string) => void;
+  updateBayAccessory: (bayId: string, accessoryId: string, updates: Partial<BayAccessory>) => void;
+  connectBays: (connection: BayConnection) => void;
+  disconnectBays: (fromBayId: string, toBayId: string) => void;
   
   // Wall bounds protection actions
   checkWallBoundsLock: (wallPosition: WallPosition, proposedDimensions: Partial<BuildingDimensions>) => { canModify: boolean; restrictions: string[] };

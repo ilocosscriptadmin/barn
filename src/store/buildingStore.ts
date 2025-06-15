@@ -33,7 +33,10 @@ import type {
   SpaceLayoutDetection,
   ClearanceZone,
   AccessPath,
-  VentilationArea
+  VentilationArea,
+  BaySection,
+  BayAccessory,
+  BayConnection
 } from '../types';
 
 // Default initial building with minimum room constraints
@@ -51,6 +54,9 @@ const defaultBuilding = {
   wallProfile: 'trimdek' as WallProfile, // Default to Trimdek profile
   wallBoundsProtection: new Map<WallPosition, WallBoundsProtection>(),
   spaceLayout: undefined as SpaceLayoutDetection | undefined,
+  bays: [] as BaySection[], // Initialize empty bay system
+  activeBayId: undefined as string | undefined,
+  bayConnections: [] as BayConnection[]
 };
 
 // Create a default project with validated dimensions
@@ -64,7 +70,7 @@ const createDefaultProject = (): Project => {
 
   return {
     id: uuidv4(),
-    name: 'New Room',
+    name: 'New Barn',
     created: new Date(),
     lastModified: new Date(),
     building: { 
@@ -83,7 +89,7 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
   // Set complete building state atomically
   setBuilding: (building: Building) =>
     set((state) => {
-      console.log(`\n🏗️ SETTING COMPLETE BUILDING STATE WITH SPACE LAYOUT DETECTION`);
+      console.log(`\n🏗️ SETTING COMPLETE BUILDING STATE WITH BAY SYSTEM`);
       
       // First, validate and enforce room dimension constraints
       const roomValidation = validateRoomDimensions(building.dimensions, STANDARD_ROOM_CONSTRAINTS);
@@ -101,6 +107,14 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         };
         
         console.log(`📏 Applied dimension adjustments: ${adjustedDimensions.width}ft × ${adjustedDimensions.length}ft × ${adjustedDimensions.height}ft`);
+      }
+
+      // Initialize bay system if not present
+      if (!building.bays) {
+        building.bays = [];
+      }
+      if (!building.bayConnections) {
+        building.bayConnections = [];
       }
 
       // Validate height constraints for all features
@@ -168,8 +182,9 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         };
       });
 
-      console.log(`✅ Building state validation passed with space layout protection`);
+      console.log(`✅ Building state validation passed with bay system`);
       console.log(`🛡️ ${wallBoundsProtection.size} protected walls`);
+      console.log(`🏗️ ${building.bays.length} bay sections`);
       console.log(`🔍 ${spaceLayout.layoutConstraints.filter(c => c.severity === 'critical').length} critical layout constraints`);
 
       return {
@@ -189,7 +204,7 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
   // Update building dimensions with comprehensive validation and space layout checking
   updateDimensions: (dimensions: Partial<BuildingDimensions>) => 
     set((state) => {
-      console.log(`\n🏗️ UPDATING DIMENSIONS WITH SPACE LAYOUT PROTECTION`);
+      console.log(`\n🏗️ UPDATING DIMENSIONS WITH BAY SYSTEM PROTECTION`);
       console.log(`Proposed changes:`, dimensions);
       
       // 🔍 CHECK SPACE LAYOUT CONSTRAINTS first
@@ -205,36 +220,15 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
           console.log(`Space violations: ${spaceValidation.violations.length}`);
           spaceValidation.violations.forEach(violation => console.log(`  ❌ ${violation}`));
           
-          // Show user-friendly error message
-          const errorMessage = [
-            'Cannot modify room dimensions - architectural elements prevent changes:',
-            ...spaceValidation.violations.slice(0, 3), // Show first 3 violations
-            spaceValidation.violations.length > 3 ? `...and ${spaceValidation.violations.length - 3} more restrictions` : '',
-            '',
-            'Suggestions:',
-            ...spaceValidation.suggestions.slice(0, 2)
-          ].filter(Boolean).join('\n');
-          
-          console.error(errorMessage);
-          
-          // Return current state without changes
           return state;
-        }
-        
-        // Show suggestions if any
-        if (spaceValidation.suggestions.length > 0) {
-          console.log(`\n💡 SPACE LAYOUT SUGGESTIONS:`);
-          spaceValidation.suggestions.forEach(suggestion => console.log(`  💡 ${suggestion}`));
         }
       }
       
       // 🔒 CHECK WALL BOUNDS LOCKS for each affected wall
       const wallPositions: WallPosition[] = ['front', 'back', 'left', 'right'];
       const lockViolations: string[] = [];
-      const lockWarnings: string[] = [];
       
       wallPositions.forEach(wallPosition => {
-        // Check if this dimension change affects this wall
         const affectedDimensions = [];
         if ((wallPosition === 'front' || wallPosition === 'back') && dimensions.width !== undefined) {
           affectedDimensions.push('width');
@@ -256,38 +250,13 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
           
           if (!validation.canModify) {
             lockViolations.push(...validation.restrictions);
-            console.log(`❌ ${wallPosition} wall: DIMENSION CHANGE BLOCKED`);
-            validation.restrictions.forEach(restriction => console.log(`  - ${restriction}`));
-          } else if (validation.warnings.length > 0) {
-            lockWarnings.push(...validation.warnings);
-            console.log(`⚠️ ${wallPosition} wall: Warnings for dimension change`);
           }
         }
       });
       
-      // If any walls are locked, prevent the dimension change
       if (lockViolations.length > 0) {
         console.log(`\n🚫 DIMENSION UPDATE BLOCKED - WALL BOUNDS PROTECTION ACTIVE`);
-        console.log(`Lock violations: ${lockViolations.length}`);
-        lockViolations.forEach(violation => console.log(`  ❌ ${violation}`));
-        
-        // Show user-friendly error message
-        const errorMessage = [
-          'Cannot modify room dimensions - wall features prevent changes:',
-          ...lockViolations.slice(0, 3), // Show first 3 violations
-          lockViolations.length > 3 ? `...and ${lockViolations.length - 3} more restrictions` : ''
-        ].filter(Boolean).join('\n');
-        
-        console.error(errorMessage);
-        
-        // Return current state without changes
         return state;
-      }
-      
-      // Show warnings if any
-      if (lockWarnings.length > 0) {
-        console.log(`\n⚠️ DIMENSION UPDATE WARNINGS:`);
-        lockWarnings.forEach(warning => console.log(`  ⚠️ ${warning}`));
       }
       
       // First, enforce minimum room constraints
@@ -303,45 +272,13 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
       if (!roomValidation.valid) {
         console.warn('Room dimension validation failed after enforcement:', roomValidation.errors);
         
-        // Use adjusted dimensions if available
         if (roomValidation.adjustedDimensions) {
           Object.assign(enforcedDimensions, roomValidation.adjustedDimensions);
-          console.log(`📏 Applied additional adjustments:`, roomValidation.adjustedDimensions);
-        }
-      }
-
-      // If height changed, validate all existing features
-      if (dimensions.height !== undefined) {
-        const heightValidation = validateWallHeights(enforcedDimensions, state.currentProject.building.features);
-        
-        if (!heightValidation.valid) {
-          console.warn('Wall height validation failed:', heightValidation.errors);
-        }
-      }
-
-      // If width or length changed, validate wall bounds for all features
-      if (dimensions.width !== undefined || dimensions.length !== undefined) {
-        const invalidFeatures = state.currentProject.building.features.filter(feature => {
-          return !isValidFeaturePosition(feature, enforcedDimensions);
-        });
-
-        if (invalidFeatures.length > 0) {
-          console.warn('Wall bounds validation failed for features:', invalidFeatures.map(f => f.id));
-        }
-
-        // Also validate skylights when roof dimensions change
-        const invalidSkylights = state.currentProject.building.skylights.filter(skylight => {
-          return !isValidSkylightPosition(skylight, enforcedDimensions);
-        });
-
-        if (invalidSkylights.length > 0) {
-          console.warn('Skylight bounds validation failed for skylights:', invalidSkylights.length);
         }
       }
 
       // 🔍 UPDATE SPACE LAYOUT after successful dimension change
       const updatedSpaceLayout = scanSpaceLayout(state.currentProject.building.features, enforcedDimensions);
-      console.log(`🔍 Space layout updated: ${updatedSpaceLayout.layoutConstraints.length} constraints`);
 
       // 🔒 UPDATE WALL BOUNDS PROTECTION after successful dimension change
       const updatedWallBoundsProtection = new Map<WallPosition, WallBoundsProtection>();
@@ -350,13 +287,10 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         const protection = getWallProtectionStatus(wallPosition, state.currentProject.building.features, enforcedDimensions);
         if (protection) {
           updatedWallBoundsProtection.set(wallPosition, protection);
-          console.log(`🛡️ Updated: ${generateLockStatusMessage(wallPosition, protection)}`);
         }
       });
 
       console.log(`✅ Final dimensions: ${enforcedDimensions.width}ft × ${enforcedDimensions.length}ft × ${enforcedDimensions.height}ft`);
-      console.log(`🔒 Wall protection updated for ${updatedWallBoundsProtection.size} walls`);
-      console.log(`🔍 Space layout constraints: ${updatedSpaceLayout.layoutConstraints.filter(c => c.severity === 'critical').length} critical`);
 
       return {
         currentProject: {
@@ -399,13 +333,6 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
 
       // 🔍 UPDATE SPACE LAYOUT with new feature
       const updatedSpaceLayout = scanSpaceLayout(newFeatures, state.currentProject.building.dimensions);
-      console.log(`🔍 Space layout updated with new ${newFeature.type}: ${updatedSpaceLayout.layoutConstraints.length} constraints`);
-
-      // Check if adding this feature creates any critical violations
-      const criticalConstraints = updatedSpaceLayout.layoutConstraints.filter(c => c.severity === 'critical');
-      if (criticalConstraints.length > 0) {
-        console.log(`⚠️ Adding ${newFeature.type} creates ${criticalConstraints.length} critical constraints`);
-      }
 
       // 🔒 CREATE BOUNDS LOCK for the new feature with enhanced requirements
       const detectedFeature = updatedSpaceLayout.detectedFeatures.find(df => df.id === newFeature.id);
@@ -432,10 +359,6 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         }
       });
 
-      console.log(`🔒 Feature added with space layout integration: ${newFeature.type} on ${newFeature.position.wallPosition} wall`);
-      console.log(`🛡️ Wall protection updated for ${wallBoundsProtection.size} walls`);
-      console.log(`🔍 Clearance zones: ${updatedSpaceLayout.clearanceZones.filter(z => z.featureId === newFeature.id).length} for this feature`);
-
       return {
         currentProject: {
           ...state.currentProject,
@@ -453,14 +376,12 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
   // Remove a wall feature and update space layout
   removeFeature: (id: string) => 
     set((state) => {
-      const removedFeature = state.currentProject.building.features.find(f => f.id === id);
       const remainingFeatures = state.currentProject.building.features.filter(
         (feature) => feature.id !== id
       );
 
       // 🔍 UPDATE SPACE LAYOUT after feature removal
       const updatedSpaceLayout = scanSpaceLayout(remainingFeatures, state.currentProject.building.dimensions);
-      console.log(`🔍 Space layout updated after removing ${removedFeature?.type}: ${updatedSpaceLayout.layoutConstraints.length} constraints`);
 
       // 🔒 UPDATE WALL BOUNDS PROTECTION after feature removal
       const wallBoundsProtection = new Map<WallPosition, WallBoundsProtection>();
@@ -472,12 +393,6 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
           wallBoundsProtection.set(wallPosition, protection);
         }
       });
-
-      if (removedFeature) {
-        console.log(`🔓 Feature removed and space unlocked: ${removedFeature.type} from ${removedFeature.position.wallPosition} wall`);
-        console.log(`🛡️ Wall protection updated for ${wallBoundsProtection.size} walls`);
-        console.log(`🔍 Layout constraints reduced by feature removal`);
-      }
 
       return {
         currentProject: {
@@ -566,34 +481,6 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
         return state;
       }
 
-      // 🔒 CHECK IF FEATURE IS LOCKED
-      if (existingFeature.isLocked && existingFeature.boundsLock) {
-        const lockedDimensions = existingFeature.boundsLock.lockedDimensions;
-        
-        // Check if trying to modify locked dimensions
-        const violations: string[] = [];
-        
-        if (updates.width !== undefined && lockedDimensions.width) {
-          violations.push('Feature width is locked to maintain wall dimensional integrity');
-        }
-        
-        if (updates.height !== undefined && lockedDimensions.height) {
-          violations.push('Feature height is locked to maintain wall dimensional integrity');
-        }
-        
-        if (updates.position !== undefined && lockedDimensions.position) {
-          violations.push('Feature position is locked to maintain structural integrity');
-        }
-        
-        if (violations.length > 0) {
-          console.log(`🚫 FEATURE UPDATE BLOCKED - BOUNDS LOCK ACTIVE`);
-          violations.forEach(violation => console.log(`  ❌ ${violation}`));
-          
-          // For now, allow the update but warn - in production you might want to block it
-          console.warn('Feature update contains locked properties but proceeding with warning');
-        }
-      }
-
       const updatedFeatures = state.currentProject.building.features.map((feature) =>
         feature.id === id ? { ...feature, ...updates } : feature
       );
@@ -622,7 +509,6 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
 
       // 🔍 UPDATE SPACE LAYOUT after feature update
       const updatedSpaceLayout = scanSpaceLayout(updatedFeatures, state.currentProject.building.dimensions);
-      console.log(`🔍 Space layout updated after modifying ${existingFeature.type}: ${updatedSpaceLayout.layoutConstraints.length} constraints`);
 
       // 🔒 UPDATE WALL BOUNDS PROTECTION
       const wallBoundsProtection = new Map<WallPosition, WallBoundsProtection>();
@@ -634,8 +520,6 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
           wallBoundsProtection.set(wallPosition, protection);
         }
       });
-
-      console.log(`🔒 Feature updated with space layout integration: ${existingFeature.type} on ${existingFeature.position.wallPosition} wall`);
 
       return {
         currentProject: {
@@ -736,17 +620,273 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
     }),
 
   // Create a new project with minimum room constraints
-  createNewProject: (name = 'New Room') => 
+  createNewProject: (name = 'New Barn') => 
     set(() => {
       const newProject = createDefaultProject();
       newProject.name = name;
       
-      console.log(`\n🏠 CREATING NEW ROOM PROJECT: ${name}`);
+      console.log(`\n🏠 CREATING NEW BARN PROJECT: ${name}`);
       console.log(`Dimensions: ${newProject.building.dimensions.width}ft × ${newProject.building.dimensions.length}ft × ${newProject.building.dimensions.height}ft`);
-      console.log(`Meets minimums: ✅`);
+      console.log(`Bay system initialized: ${newProject.building.bays.length} bays`);
       
       return {
         currentProject: newProject,
+      };
+    }),
+
+  // 🏗️ BAY SYSTEM METHODS
+
+  // Add a new bay/section
+  addBay: (bay: Omit<BaySection, 'id'>) =>
+    set((state) => {
+      const newBay: BaySection = {
+        ...bay,
+        id: uuidv4()
+      };
+
+      console.log(`🏗️ Adding new bay: ${newBay.name} (${newBay.type})`);
+      console.log(`Dimensions: ${newBay.dimensions.width}ft × ${newBay.dimensions.length}ft × ${newBay.dimensions.height}ft`);
+      console.log(`Position: (${newBay.position.x}, ${newBay.position.y}, ${newBay.position.z})`);
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bays: [...state.currentProject.building.bays, newBay],
+            activeBayId: newBay.id // Set new bay as active
+          },
+        },
+      };
+    }),
+
+  // Remove a bay/section
+  removeBay: (bayId: string) =>
+    set((state) => {
+      const bayToRemove = state.currentProject.building.bays.find(b => b.id === bayId);
+      if (bayToRemove) {
+        console.log(`🗑️ Removing bay: ${bayToRemove.name}`);
+      }
+
+      const updatedBays = state.currentProject.building.bays.filter(bay => bay.id !== bayId);
+      const updatedConnections = state.currentProject.building.bayConnections.filter(
+        conn => conn.fromBayId !== bayId && conn.toBayId !== bayId
+      );
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bays: updatedBays,
+            bayConnections: updatedConnections,
+            activeBayId: state.currentProject.building.activeBayId === bayId ? undefined : state.currentProject.building.activeBayId
+          },
+        },
+      };
+    }),
+
+  // Update a bay/section
+  updateBay: (bayId: string, updates: Partial<BaySection>) =>
+    set((state) => {
+      const updatedBays = state.currentProject.building.bays.map(bay =>
+        bay.id === bayId ? { ...bay, ...updates } : bay
+      );
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bays: updatedBays,
+          },
+        },
+      };
+    }),
+
+  // Set active bay for editing
+  setActiveBay: (bayId: string | null) =>
+    set((state) => {
+      console.log(`🎯 Setting active bay: ${bayId || 'Main Building'}`);
+      
+      return {
+        currentProject: {
+          ...state.currentProject,
+          building: {
+            ...state.currentProject.building,
+            activeBayId: bayId || undefined,
+          },
+        },
+      };
+    }),
+
+  // Duplicate a bay
+  duplicateBay: (bayId: string) =>
+    set((state) => {
+      const originalBay = state.currentProject.building.bays.find(b => b.id === bayId);
+      if (!originalBay) {
+        console.error('Bay not found for duplication:', bayId);
+        return state;
+      }
+
+      const duplicatedBay: BaySection = {
+        ...originalBay,
+        id: uuidv4(),
+        name: `${originalBay.name} Copy`,
+        position: {
+          ...originalBay.position,
+          x: originalBay.position.x + originalBay.dimensions.width + 2 // Offset by width + 2ft gap
+        },
+        features: originalBay.features.map(feature => ({
+          ...feature,
+          id: uuidv4()
+        })),
+        accessories: originalBay.accessories.map(accessory => ({
+          ...accessory,
+          id: uuidv4()
+        }))
+      };
+
+      console.log(`📋 Duplicating bay: ${originalBay.name} → ${duplicatedBay.name}`);
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bays: [...state.currentProject.building.bays, duplicatedBay],
+          },
+        },
+      };
+    }),
+
+  // Add accessory to a bay
+  addBayAccessory: (bayId: string, accessory: Omit<BayAccessory, 'id'>) =>
+    set((state) => {
+      const newAccessory: BayAccessory = {
+        ...accessory,
+        id: uuidv4()
+      };
+
+      const updatedBays = state.currentProject.building.bays.map(bay =>
+        bay.id === bayId 
+          ? { ...bay, accessories: [...bay.accessories, newAccessory] }
+          : bay
+      );
+
+      console.log(`🔧 Adding accessory to bay ${bayId}: ${newAccessory.type} (${newAccessory.name})`);
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bays: updatedBays,
+          },
+        },
+      };
+    }),
+
+  // Remove accessory from a bay
+  removeBayAccessory: (bayId: string, accessoryId: string) =>
+    set((state) => {
+      const updatedBays = state.currentProject.building.bays.map(bay =>
+        bay.id === bayId 
+          ? { ...bay, accessories: bay.accessories.filter(acc => acc.id !== accessoryId) }
+          : bay
+      );
+
+      console.log(`🗑️ Removing accessory ${accessoryId} from bay ${bayId}`);
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bays: updatedBays,
+          },
+        },
+      };
+    }),
+
+  // Update accessory in a bay
+  updateBayAccessory: (bayId: string, accessoryId: string, updates: Partial<BayAccessory>) =>
+    set((state) => {
+      const updatedBays = state.currentProject.building.bays.map(bay =>
+        bay.id === bayId 
+          ? { 
+              ...bay, 
+              accessories: bay.accessories.map(acc =>
+                acc.id === accessoryId ? { ...acc, ...updates } : acc
+              )
+            }
+          : bay
+      );
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bays: updatedBays,
+          },
+        },
+      };
+    }),
+
+  // Connect two bays
+  connectBays: (connection: BayConnection) =>
+    set((state) => {
+      const existingConnection = state.currentProject.building.bayConnections.find(
+        conn => (conn.fromBayId === connection.fromBayId && conn.toBayId === connection.toBayId) ||
+                (conn.fromBayId === connection.toBayId && conn.toBayId === connection.fromBayId)
+      );
+
+      if (existingConnection) {
+        console.log(`🔗 Connection already exists between bays ${connection.fromBayId} and ${connection.toBayId}`);
+        return state;
+      }
+
+      console.log(`🔗 Connecting bays: ${connection.fromBayId} → ${connection.toBayId} (${connection.connectionType})`);
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bayConnections: [...state.currentProject.building.bayConnections, connection],
+          },
+        },
+      };
+    }),
+
+  // Disconnect two bays
+  disconnectBays: (fromBayId: string, toBayId: string) =>
+    set((state) => {
+      const updatedConnections = state.currentProject.building.bayConnections.filter(
+        conn => !((conn.fromBayId === fromBayId && conn.toBayId === toBayId) ||
+                  (conn.fromBayId === toBayId && conn.toBayId === fromBayId))
+      );
+
+      console.log(`🔗 Disconnecting bays: ${fromBayId} ↔ ${toBayId}`);
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          lastModified: new Date(),
+          building: {
+            ...state.currentProject.building,
+            bayConnections: updatedConnections,
+          },
+        },
       };
     }),
 
@@ -781,8 +921,6 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
   // Override wall lock (for advanced users)
   overrideWallLock: (wallPosition: WallPosition, reason: string) => {
     console.log(`🔓 WALL LOCK OVERRIDE REQUESTED: ${wallPosition} wall - ${reason}`);
-    // In a real implementation, this might require admin privileges
-    // For now, just log the override attempt
     return false; // Override not allowed in this implementation
   },
 

@@ -1,23 +1,30 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, Home, Ruler, Layout, Grid3X3, Palette, Building, Eye } from 'lucide-react';
+import { ChevronRight, ChevronDown, Home, Ruler, Layout, Grid3X3, Palette, Building, Eye, Layers } from 'lucide-react';
 import DimensionsPanel from './DimensionsPanel';
 import RoofPanel from './RoofPanel';
 import WallFeaturesPanel from './WallFeaturesPanel';
 import WallLayoutPanel from './WallLayoutPanel';
 import ColorsPanel from './ColorsPanel';
 import SpaceLayoutPanel from './SpaceLayoutPanel';
+import BayManagementPanel from './BayManagementPanel';
 
-type PanelId = 'dimensions' | 'roof' | 'features' | 'layout' | 'colors' | 'spaceLayout';
+type PanelId = 'dimensions' | 'roof' | 'features' | 'layout' | 'colors' | 'spaceLayout' | 'bayManagement';
 
 const Sidebar: React.FC = () => {
-  const [expandedPanel, setExpandedPanel] = useState<PanelId | null>('dimensions');
+  const [expandedPanel, setExpandedPanel] = useState<PanelId | null>('bayManagement');
 
   const togglePanel = (panel: PanelId) => {
     setExpandedPanel(expandedPanel === panel ? null : panel);
   };
 
   const panelConfig = [
+    { 
+      id: 'bayManagement' as PanelId, 
+      title: 'Bay Management', 
+      icon: <Layers className="w-5 h-5" />,
+      component: <BayManagementPanel />
+    },
     { 
       id: 'dimensions' as PanelId, 
       title: 'Building Dimensions', 
@@ -65,7 +72,7 @@ const Sidebar: React.FC = () => {
     >
       <div className="p-4 border-b border-gray-200 flex items-center">
         <Grid3X3 className="w-6 h-6 text-primary mr-2" />
-        <h1 className="text-xl font-semibold">Room Builder</h1>
+        <h1 className="text-xl font-semibold">Barn Builder</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto">
