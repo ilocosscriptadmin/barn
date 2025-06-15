@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit2, Copy, Trash2, Eye, EyeOff, Home, Building2, Layers, Settings, Zap } from 'lucide-react';
 import { useBuildingStore } from '../../store/buildingStore';
@@ -37,63 +37,6 @@ const BayManagementPanel: React.FC = () => {
     roofType: 'gable' as 'gable' | 'skillion' | 'shed' | 'hip',
     roofPitch: dimensions.roofPitch // Match main barn pitch
   });
-
-  // Auto-create the two-bay barn design
-  useEffect(() => {
-    if (bays.length === 0) {
-      console.log('🏗️ AUTO-CREATING TWO-BAY BARN DESIGN');
-      
-      // Create front bay - full width extension
-      const frontBay: Omit<BaySection, 'id'> = {
-        name: 'Front Bay Extension',
-        type: 'extension',
-        dimensions: {
-          width: dimensions.width, // Full width of main barn
-          length: 20, // 20ft deep extension
-          height: dimensions.height // Same height as main barn
-        },
-        position: calculateBayPosition('front', dimensions.width),
-        roofType: 'gable',
-        roofPitch: dimensions.roofPitch,
-        wallProfile: 'multiclad',
-        color: '#5A6B47', // Match main barn color
-        roofColor: '#4A3C32', // Match main barn roof
-        features: [],
-        skylights: [],
-        accessories: [],
-        isActive: true,
-        connectionType: 'attached',
-        connectionWall: 'front'
-      };
-
-      // Create back bay - full width extension
-      const backBay: Omit<BaySection, 'id'> = {
-        name: 'Back Bay Extension',
-        type: 'extension',
-        dimensions: {
-          width: dimensions.width, // Full width of main barn
-          length: 20, // 20ft deep extension
-          height: dimensions.height // Same height as main barn
-        },
-        position: calculateBayPosition('back', dimensions.width),
-        roofType: 'gable',
-        roofPitch: dimensions.roofPitch,
-        wallProfile: 'multiclad',
-        color: '#5A6B47', // Match main barn color
-        roofColor: '#4A3C32', // Match main barn roof
-        features: [],
-        skylights: [],
-        accessories: [],
-        isActive: true,
-        connectionType: 'attached',
-        connectionWall: 'back'
-      };
-
-      // Add both bays
-      addBay(frontBay);
-      setTimeout(() => addBay(backBay), 100); // Small delay to ensure proper creation
-    }
-  }, [dimensions, bays.length, addBay]);
 
   const handleAddBay = () => {
     const bayToAdd: Omit<BaySection, 'id'> = {
@@ -176,15 +119,57 @@ const BayManagementPanel: React.FC = () => {
     }
   };
 
-  // Auto-create design button
-  const handleAutoCreateDesign = () => {
-    // Clear existing bays
-    bays.forEach(bay => removeBay(bay.id));
-    
-    // Trigger auto-creation
-    setTimeout(() => {
-      window.location.reload(); // Simple way to trigger auto-creation
-    }, 100);
+  // Quick design templates
+  const handleCreateTwoBayDesign = () => {
+    // Create front bay - full width extension
+    const frontBay: Omit<BaySection, 'id'> = {
+      name: 'Front Bay Extension',
+      type: 'extension',
+      dimensions: {
+        width: dimensions.width, // Full width of main barn
+        length: 20, // 20ft deep extension
+        height: dimensions.height // Same height as main barn
+      },
+      position: calculateBayPosition('front', dimensions.width),
+      roofType: 'gable',
+      roofPitch: dimensions.roofPitch,
+      wallProfile: 'multiclad',
+      color: '#5A6B47', // Match main barn color
+      roofColor: '#4A3C32', // Match main barn roof
+      features: [],
+      skylights: [],
+      accessories: [],
+      isActive: true,
+      connectionType: 'attached',
+      connectionWall: 'front'
+    };
+
+    // Create back bay - full width extension
+    const backBay: Omit<BaySection, 'id'> = {
+      name: 'Back Bay Extension',
+      type: 'extension',
+      dimensions: {
+        width: dimensions.width, // Full width of main barn
+        length: 20, // 20ft deep extension
+        height: dimensions.height // Same height as main barn
+      },
+      position: calculateBayPosition('back', dimensions.width),
+      roofType: 'gable',
+      roofPitch: dimensions.roofPitch,
+      wallProfile: 'multiclad',
+      color: '#5A6B47', // Match main barn color
+      roofColor: '#4A3C32', // Match main barn roof
+      features: [],
+      skylights: [],
+      accessories: [],
+      isActive: true,
+      connectionType: 'attached',
+      connectionWall: 'back'
+    };
+
+    // Add both bays
+    addBay(frontBay);
+    setTimeout(() => addBay(backBay), 100); // Small delay to ensure proper creation
   };
 
   return (
@@ -194,29 +179,6 @@ const BayManagementPanel: React.FC = () => {
       exit={{ opacity: 0 }}
       className="space-y-4"
     >
-      {/* Two-Bay Barn Design Header */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <div className="flex items-center space-x-2 mb-2">
-          <Zap className="w-4 h-4 text-blue-600" />
-          <span className="text-sm font-medium text-blue-800">Two-Bay Barn Design</span>
-        </div>
-        <div className="text-xs text-blue-700 space-y-1">
-          <div>🏗️ Main Barn: <strong>{dimensions.width}ft × {dimensions.length}ft</strong></div>
-          <div>🔗 Front Bay: <strong>{dimensions.width}ft × 20ft</strong> (full width)</div>
-          <div>🔗 Back Bay: <strong>{dimensions.width}ft × 20ft</strong> (full width)</div>
-          <div>🏛️ Seamless integration with matching architecture</div>
-        </div>
-        {bays.length === 0 && (
-          <button
-            onClick={handleAutoCreateDesign}
-            className="mt-2 w-full text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
-          >
-            <Zap className="w-3 h-3 mr-1 inline" />
-            Auto-Create Two-Bay Design
-          </button>
-        )}
-      </div>
-
       {/* Connected Bay System Explanation */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
         <div className="flex items-center space-x-2 mb-2">
@@ -264,12 +226,24 @@ const BayManagementPanel: React.FC = () => {
         </button>
       </div>
 
-      {/* Bay List */}
+      {/* No Bays State with Quick Templates */}
       {bays.length === 0 && !showAddForm && (
         <div className="text-center py-6 text-gray-500">
           <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No connected bays added yet</p>
-          <p className="text-xs">Add extensions to create: <strong>[ ⌐ ]</strong> (open connection)</p>
+          <p className="text-xs mb-4">Add extensions to create: <strong>[ ⌐ ]</strong> (open connection)</p>
+          
+          {/* Quick Design Templates */}
+          <div className="space-y-2">
+            <button
+              onClick={handleCreateTwoBayDesign}
+              className="w-full text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded border border-blue-200"
+            >
+              <Zap className="w-3 h-3 mr-1 inline" />
+              Quick: Two-Bay Design (Front + Back)
+            </button>
+            <p className="text-xs text-gray-400">Or use "Add Bay" to create custom extensions</p>
+          </div>
         </div>
       )}
 
@@ -512,7 +486,7 @@ const BayManagementPanel: React.FC = () => {
             <div>Open connections: {bays.filter(b => b.isActive).length}</div>
           </div>
           <div className="mt-2 text-xs text-green-600 font-medium">
-            ✅ Two-Bay Design: Seamless integration with matching architecture
+            ✅ Connected Design: Seamless integration with open access
           </div>
         </div>
       )}
