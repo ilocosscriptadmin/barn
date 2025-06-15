@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit2, Copy, Trash2, Eye, EyeOff, Home, Building2, Layers, Settings } from 'lucide-react';
+import { Plus, Edit2, Copy, Trash2, Eye, EyeOff, Home, Building2, Layers, Settings, Zap } from 'lucide-react';
 import { useBuildingStore } from '../../store/buildingStore';
 import type { BaySection, WallPosition } from '../../types';
 
@@ -30,13 +30,70 @@ const BayManagementPanel: React.FC = () => {
   const [newBay, setNewBay] = useState({
     name: '',
     type: 'extension' as 'main' | 'extension' | 'lean-to' | 'side-bay',
-    width: 20,
-    length: 30,
-    height: 12,
-    connectionWall: 'right' as WallPosition,
+    width: dimensions.width, // Match main barn width
+    length: 20, // Default bay depth
+    height: dimensions.height, // Match main barn height
+    connectionWall: 'front' as WallPosition,
     roofType: 'gable' as 'gable' | 'skillion' | 'shed' | 'hip',
-    roofPitch: 4
+    roofPitch: dimensions.roofPitch // Match main barn pitch
   });
+
+  // Auto-create the two-bay barn design
+  useEffect(() => {
+    if (bays.length === 0) {
+      console.log('🏗️ AUTO-CREATING TWO-BAY BARN DESIGN');
+      
+      // Create front bay - full width extension
+      const frontBay: Omit<BaySection, 'id'> = {
+        name: 'Front Bay Extension',
+        type: 'extension',
+        dimensions: {
+          width: dimensions.width, // Full width of main barn
+          length: 20, // 20ft deep extension
+          height: dimensions.height // Same height as main barn
+        },
+        position: calculateBayPosition('front', dimensions.width),
+        roofType: 'gable',
+        roofPitch: dimensions.roofPitch,
+        wallProfile: 'multiclad',
+        color: '#5A6B47', // Match main barn color
+        roofColor: '#4A3C32', // Match main barn roof
+        features: [],
+        skylights: [],
+        accessories: [],
+        isActive: true,
+        connectionType: 'attached',
+        connectionWall: 'front'
+      };
+
+      // Create back bay - full width extension
+      const backBay: Omit<BaySection, 'id'> = {
+        name: 'Back Bay Extension',
+        type: 'extension',
+        dimensions: {
+          width: dimensions.width, // Full width of main barn
+          length: 20, // 20ft deep extension
+          height: dimensions.height // Same height as main barn
+        },
+        position: calculateBayPosition('back', dimensions.width),
+        roofType: 'gable',
+        roofPitch: dimensions.roofPitch,
+        wallProfile: 'multiclad',
+        color: '#5A6B47', // Match main barn color
+        roofColor: '#4A3C32', // Match main barn roof
+        features: [],
+        skylights: [],
+        accessories: [],
+        isActive: true,
+        connectionType: 'attached',
+        connectionWall: 'back'
+      };
+
+      // Add both bays
+      addBay(frontBay);
+      setTimeout(() => addBay(backBay), 100); // Small delay to ensure proper creation
+    }
+  }, [dimensions, bays.length, addBay]);
 
   const handleAddBay = () => {
     const bayToAdd: Omit<BaySection, 'id'> = {
@@ -50,9 +107,9 @@ const BayManagementPanel: React.FC = () => {
       position: calculateBayPosition(newBay.connectionWall, newBay.width),
       roofType: newBay.roofType,
       roofPitch: newBay.roofPitch,
-      wallProfile: 'trimdek',
-      color: '#E5E7EB',
-      roofColor: '#9CA3AF',
+      wallProfile: 'multiclad',
+      color: '#5A6B47',
+      roofColor: '#4A3C32',
       features: [],
       skylights: [],
       accessories: [],
@@ -67,12 +124,12 @@ const BayManagementPanel: React.FC = () => {
     setNewBay({
       name: '',
       type: 'extension',
-      width: 20,
-      length: 30,
-      height: 12,
-      connectionWall: 'right',
+      width: dimensions.width,
+      length: 20,
+      height: dimensions.height,
+      connectionWall: 'front',
       roofType: 'gable',
-      roofPitch: 4
+      roofPitch: dimensions.roofPitch
     });
   };
 
@@ -86,9 +143,9 @@ const BayManagementPanel: React.FC = () => {
       case 'left':
         return { x: -mainWidth / 2 - bayWidth / 2, y: 0, z: 0 };
       case 'front':
-        return { x: 0, y: mainLength / 2 + bayWidth / 2, z: 0 };
+        return { x: 0, y: mainLength / 2 + 20 / 2, z: 0 }; // 20ft bay depth
       case 'back':
-        return { x: 0, y: -mainLength / 2 - bayWidth / 2, z: 0 };
+        return { x: 0, y: -mainLength / 2 - 20 / 2, z: 0 }; // 20ft bay depth
       default:
         return { x: mainWidth / 2 + bayWidth / 2, y: 0, z: 0 };
     }
@@ -119,6 +176,17 @@ const BayManagementPanel: React.FC = () => {
     }
   };
 
+  // Auto-create design button
+  const handleAutoCreateDesign = () => {
+    // Clear existing bays
+    bays.forEach(bay => removeBay(bay.id));
+    
+    // Trigger auto-creation
+    setTimeout(() => {
+      window.location.reload(); // Simple way to trigger auto-creation
+    }, 100);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -126,7 +194,30 @@ const BayManagementPanel: React.FC = () => {
       exit={{ opacity: 0 }}
       className="space-y-4"
     >
-      {/* Bay System Explanation */}
+      {/* Two-Bay Barn Design Header */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div className="flex items-center space-x-2 mb-2">
+          <Zap className="w-4 h-4 text-blue-600" />
+          <span className="text-sm font-medium text-blue-800">Two-Bay Barn Design</span>
+        </div>
+        <div className="text-xs text-blue-700 space-y-1">
+          <div>🏗️ Main Barn: <strong>{dimensions.width}ft × {dimensions.length}ft</strong></div>
+          <div>🔗 Front Bay: <strong>{dimensions.width}ft × 20ft</strong> (full width)</div>
+          <div>🔗 Back Bay: <strong>{dimensions.width}ft × 20ft</strong> (full width)</div>
+          <div>🏛️ Seamless integration with matching architecture</div>
+        </div>
+        {bays.length === 0 && (
+          <button
+            onClick={handleAutoCreateDesign}
+            className="mt-2 w-full text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
+          >
+            <Zap className="w-3 h-3 mr-1 inline" />
+            Auto-Create Two-Bay Design
+          </button>
+        )}
+      </div>
+
+      {/* Connected Bay System Explanation */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
         <div className="flex items-center space-x-2 mb-2">
           <Layers className="w-4 h-4 text-green-600" />
@@ -320,9 +411,9 @@ const BayManagementPanel: React.FC = () => {
                   type="number"
                   className="form-input"
                   min="8"
-                  max="40"
+                  max="60"
                   value={newBay.width}
-                  onChange={(e) => setNewBay({ ...newBay, width: parseFloat(e.target.value) || 20 })}
+                  onChange={(e) => setNewBay({ ...newBay, width: parseFloat(e.target.value) || dimensions.width })}
                 />
               </div>
               <div>
@@ -331,9 +422,9 @@ const BayManagementPanel: React.FC = () => {
                   type="number"
                   className="form-input"
                   min="10"
-                  max="60"
+                  max="40"
                   value={newBay.length}
-                  onChange={(e) => setNewBay({ ...newBay, length: parseFloat(e.target.value) || 30 })}
+                  onChange={(e) => setNewBay({ ...newBay, length: parseFloat(e.target.value) || 20 })}
                 />
               </div>
               <div>
@@ -344,7 +435,7 @@ const BayManagementPanel: React.FC = () => {
                   min="8"
                   max="20"
                   value={newBay.height}
-                  onChange={(e) => setNewBay({ ...newBay, height: parseFloat(e.target.value) || 12 })}
+                  onChange={(e) => setNewBay({ ...newBay, height: parseFloat(e.target.value) || dimensions.height })}
                 />
               </div>
             </div>
@@ -356,10 +447,10 @@ const BayManagementPanel: React.FC = () => {
                 value={newBay.connectionWall}
                 onChange={(e) => setNewBay({ ...newBay, connectionWall: e.target.value as WallPosition })}
               >
-                <option value="right">Right Wall → [ ⌐ ] (open connection)</option>
-                <option value="left">Left Wall → [ ⌐ ] (open connection)</option>
                 <option value="front">Front Wall → [ ⌐ ] (open connection)</option>
                 <option value="back">Back Wall → [ ⌐ ] (open connection)</option>
+                <option value="right">Right Wall → [ ⌐ ] (open connection)</option>
+                <option value="left">Left Wall → [ ⌐ ] (open connection)</option>
               </select>
             </div>
 
@@ -386,7 +477,7 @@ const BayManagementPanel: React.FC = () => {
                   max="12"
                   step="0.5"
                   value={newBay.roofPitch}
-                  onChange={(e) => setNewBay({ ...newBay, roofPitch: parseFloat(e.target.value) || 4 })}
+                  onChange={(e) => setNewBay({ ...newBay, roofPitch: parseFloat(e.target.value) || dimensions.roofPitch })}
                 />
               </div>
             </div>
@@ -410,7 +501,7 @@ const BayManagementPanel: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Bay Statistics */}
+      {/* Connected Bay Statistics */}
       {bays.length > 0 && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
           <h4 className="text-sm font-medium text-gray-700 mb-2">Connected Bay Statistics</h4>
@@ -419,6 +510,9 @@ const BayManagementPanel: React.FC = () => {
             <div>Active bays: {bays.filter(b => b.isActive).length}</div>
             <div>Total accessories: {bays.reduce((sum, bay) => sum + bay.accessories.length, 0)}</div>
             <div>Open connections: {bays.filter(b => b.isActive).length}</div>
+          </div>
+          <div className="mt-2 text-xs text-green-600 font-medium">
+            ✅ Two-Bay Design: Seamless integration with matching architecture
           </div>
         </div>
       )}
