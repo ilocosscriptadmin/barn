@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Grid, Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
@@ -6,6 +6,55 @@ import { useBuildingStore } from '../store/buildingStore';
 import Building from './3d/Building';
 import FloorPlan from './FloorPlan';
 import type { ViewMode } from '../types';
+
+// Add this new component for wall placement
+const WallPlacementHelper: React.FC = () => {
+  const { interiorLayout } = useBuildingStore((state) => ({
+    interiorLayout: state.currentProject.building.interiorLayout
+  }));
+  
+  // Get the mouse position on the ground plane
+  const [mousePosition, setMousePosition] = useState<THREE.Vector3 | null>(null);
+  const { camera, raycaster, mouse, scene } = useThree();
+  
+  useFrame(() => {
+    // Create a ray from the camera to the mouse position
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Create a ground plane for intersection
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    
+    // Find intersection with ground plane
+    const intersection = new THREE.Vector3();
+    raycaster.ray.intersectPlane(groundPlane, intersection);
+    
+    if (intersection) {
+      setMousePosition(intersection);
+    }
+  });
+  
+  return mousePosition ? (
+    <group>
+      {/* Cursor indicator */}
+      <mesh position={[mousePosition.x, 0.05, mousePosition.z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.5, 32]} />
+        <meshBasicMaterial color="#4CAF50" transparent opacity={0.5} />
+      </mesh>
+      
+      {/* Coordinate display */}
+      <Text
+        position={[mousePosition.x, 0.1, mousePosition.z]}
+        fontSize={0.5}
+        color="black"
+        anchorX="center"
+        anchorY="middle"
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        {`X: ${mousePosition.x.toFixed(1)}, Z: ${mousePosition.z.toFixed(1)}`}
+      </Text>
+    </group>
+  ) : null;
+};
 
 const GrassGround: React.FC = () => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -328,6 +377,9 @@ const Canvas3D: React.FC<Canvas3DProps> = ({ view }) => {
       
       <Building />
       <Dimensions />
+      
+      {/* Wall placement helper */}
+      <WallPlacementHelper />
     </Canvas>
   );
 };

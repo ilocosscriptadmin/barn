@@ -10,8 +10,6 @@ export interface PartitionWall {
   features: PartitionFeature[]; // Doors, windows, etc.
   isLoadBearing: boolean;
   color: string;
-  undergroundExtension?: number; // How far the wall extends below ground level
-  isAnchored?: boolean; // Whether the wall has underground anchoring
 }
 
 export interface PartitionFeature {
