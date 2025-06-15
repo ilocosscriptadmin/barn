@@ -61,7 +61,7 @@ const BayManagementPanel: React.FC = () => {
       connectionWall: newBay.connectionWall
     };
 
-    console.log(`🏗️ Adding new bay: ${bayToAdd.name} connected to ${newBay.connectionWall} wall`);
+    console.log(`🏗️ Adding new CONNECTED bay: ${bayToAdd.name} connected to ${newBay.connectionWall} wall`);
     addBay(bayToAdd);
     setShowAddForm(false);
     setNewBay({
@@ -130,12 +130,13 @@ const BayManagementPanel: React.FC = () => {
       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
         <div className="flex items-center space-x-2 mb-2">
           <Layers className="w-4 h-4 text-green-600" />
-          <span className="text-sm font-medium text-green-800">Bay Section System</span>
+          <span className="text-sm font-medium text-green-800">Connected Bay System</span>
         </div>
         <div className="text-xs text-green-700 space-y-1">
           <div>🏗️ Main Building: <strong>[ ]</strong> = 1 section</div>
-          <div>➕ Add Bay: <strong>[ | ]</strong> = 2 sections with divider wall</div>
-          <div>🔧 Each bay can have independent accessories and features</div>
+          <div>➕ Add Bay: <strong>[ ⌐ ]</strong> = Connected extension (NO divider wall)</div>
+          <div>🔧 Bays are OPEN to main building - no internal walls</div>
+          <div>🚪 Walk freely between main building and bays</div>
         </div>
       </div>
 
@@ -162,7 +163,7 @@ const BayManagementPanel: React.FC = () => {
 
       {/* Add Bay Button */}
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-700">Bay Sections ({bays.length})</h3>
+        <h3 className="text-sm font-medium text-gray-700">Connected Bays ({bays.length})</h3>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="btn text-xs px-3 py-1"
@@ -176,8 +177,8 @@ const BayManagementPanel: React.FC = () => {
       {bays.length === 0 && !showAddForm && (
         <div className="text-center py-6 text-gray-500">
           <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No bay sections added yet</p>
-          <p className="text-xs">Add extensions to create: <strong>[ | ]</strong></p>
+          <p className="text-sm">No connected bays added yet</p>
+          <p className="text-xs">Add extensions to create: <strong>[ ⌐ ]</strong> (open connection)</p>
         </div>
       )}
 
@@ -247,7 +248,7 @@ const BayManagementPanel: React.FC = () => {
 
             <div className="text-xs text-gray-600 space-y-1">
               <div>Dimensions: {bay.dimensions.width}ft × {bay.dimensions.length}ft × {bay.dimensions.height}ft</div>
-              <div>Connected to: {bay.connectionWall} wall → Creates divider wall</div>
+              <div>Connected to: {bay.connectionWall} wall → <span className="text-green-600 font-medium">OPEN connection (no wall)</span></div>
               <div>Roof: {bay.roofType} ({bay.roofPitch}:12 pitch)</div>
               {bay.accessories.length > 0 && (
                 <div>Accessories: {bay.accessories.length} items</div>
@@ -285,7 +286,7 @@ const BayManagementPanel: React.FC = () => {
           exit={{ opacity: 0, height: 0 }}
           className="border border-gray-300 rounded-lg p-4 bg-gray-50"
         >
-          <h4 className="text-sm font-medium text-gray-800 mb-3">Add New Bay Section</h4>
+          <h4 className="text-sm font-medium text-gray-800 mb-3">Add Connected Bay</h4>
           
           <div className="space-y-3">
             <div>
@@ -306,7 +307,7 @@ const BayManagementPanel: React.FC = () => {
                 value={newBay.type}
                 onChange={(e) => setNewBay({ ...newBay, type: e.target.value as any })}
               >
-                <option value="extension">Extension - Full height addition</option>
+                <option value="extension">Extension - Connected addition</option>
                 <option value="lean-to">Lean-to - Sloped roof addition</option>
                 <option value="side-bay">Side Bay - Partial height section</option>
               </select>
@@ -349,16 +350,16 @@ const BayManagementPanel: React.FC = () => {
             </div>
 
             <div>
-              <label className="form-label">Connect to Wall (Creates Divider)</label>
+              <label className="form-label">Connect to Wall (Open Connection)</label>
               <select
                 className="form-input"
                 value={newBay.connectionWall}
                 onChange={(e) => setNewBay({ ...newBay, connectionWall: e.target.value as WallPosition })}
               >
-                <option value="right">Right Wall → [ | ]</option>
-                <option value="left">Left Wall → [ | ]</option>
-                <option value="front">Front Wall → [ | ]</option>
-                <option value="back">Back Wall → [ | ]</option>
+                <option value="right">Right Wall → [ ⌐ ] (open connection)</option>
+                <option value="left">Left Wall → [ ⌐ ] (open connection)</option>
+                <option value="front">Front Wall → [ ⌐ ] (open connection)</option>
+                <option value="back">Back Wall → [ ⌐ ] (open connection)</option>
               </select>
             </div>
 
@@ -396,7 +397,7 @@ const BayManagementPanel: React.FC = () => {
                 className="flex-1 btn"
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Add Bay Section
+                Add Connected Bay
               </button>
               <button
                 onClick={() => setShowAddForm(false)}
@@ -412,12 +413,12 @@ const BayManagementPanel: React.FC = () => {
       {/* Bay Statistics */}
       {bays.length > 0 && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Bay Statistics</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Connected Bay Statistics</h4>
           <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
             <div>Total bays: {bays.length}</div>
             <div>Active bays: {bays.filter(b => b.isActive).length}</div>
             <div>Total accessories: {bays.reduce((sum, bay) => sum + bay.accessories.length, 0)}</div>
-            <div>Divider walls: {bays.filter(b => b.isActive).length}</div>
+            <div>Open connections: {bays.filter(b => b.isActive).length}</div>
           </div>
         </div>
       )}

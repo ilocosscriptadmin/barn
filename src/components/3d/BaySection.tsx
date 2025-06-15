@@ -38,10 +38,19 @@ const BaySection: React.FC<BaySectionProps> = ({ bay, isActive, mainBuildingDime
       side: THREE.DoubleSide
     });
   }, []);
+
+  // Determine which walls to render based on connection
+  const shouldRenderWall = (wallPosition: string) => {
+    // Don't render the wall that connects to the main building
+    if (bay.connectionWall === wallPosition) {
+      return false; // This creates the OPEN CONNECTION
+    }
+    return true;
+  };
   
   return (
     <group position={[bay.position.x, bay.position.z, bay.position.y]}>
-      {/* Bay Foundation */}
+      {/* Bay Foundation - Extended to connect with main building */}
       <mesh position={[0, 0.1, 0]} receiveShadow castShadow>
         <boxGeometry args={[bay.dimensions.width, 0.2, bay.dimensions.length]} />
         <meshStandardMaterial 
@@ -52,51 +61,64 @@ const BaySection: React.FC<BaySectionProps> = ({ bay, isActive, mainBuildingDime
         />
       </mesh>
       
-      {/* Bay Walls */}
-      <Wall 
-        position={[0, bay.dimensions.height/2, halfLength]} 
-        width={bay.dimensions.width}
-        height={bay.dimensions.height}
-        color={bay.color}
-        wallPosition="front"
-        roofPitch={bay.roofPitch}
-        wallFeatures={getWallFeatures('front')}
-        wallProfile={bay.wallProfile}
-      />
+      {/* Bay Walls - ONLY render walls that DON'T connect to main building */}
       
-      <Wall 
-        position={[0, bay.dimensions.height/2, -halfLength]} 
-        width={bay.dimensions.width}
-        height={bay.dimensions.height}
-        color={bay.color}
-        wallPosition="back"
-        roofPitch={bay.roofPitch}
-        rotation={[0, Math.PI, 0]}
-        wallFeatures={getWallFeatures('back')}
-        wallProfile={bay.wallProfile}
-      />
+      {/* Front wall - only if not connected to main building */}
+      {shouldRenderWall('front') && (
+        <Wall 
+          position={[0, bay.dimensions.height/2, halfLength]} 
+          width={bay.dimensions.width}
+          height={bay.dimensions.height}
+          color={bay.color}
+          wallPosition="front"
+          roofPitch={bay.roofPitch}
+          wallFeatures={getWallFeatures('front')}
+          wallProfile={bay.wallProfile}
+        />
+      )}
       
-      <Wall 
-        position={[-halfWidth, bay.dimensions.height/2, 0]} 
-        width={bay.dimensions.length}
-        height={bay.dimensions.height}
-        color={bay.color}
-        wallPosition="left"
-        rotation={[0, Math.PI / 2, 0]}
-        wallFeatures={getWallFeatures('left')}
-        wallProfile={bay.wallProfile}
-      />
+      {/* Back wall - only if not connected to main building */}
+      {shouldRenderWall('back') && (
+        <Wall 
+          position={[0, bay.dimensions.height/2, -halfLength]} 
+          width={bay.dimensions.width}
+          height={bay.dimensions.height}
+          color={bay.color}
+          wallPosition="back"
+          roofPitch={bay.roofPitch}
+          rotation={[0, Math.PI, 0]}
+          wallFeatures={getWallFeatures('back')}
+          wallProfile={bay.wallProfile}
+        />
+      )}
       
-      <Wall 
-        position={[halfWidth, bay.dimensions.height/2, 0]} 
-        width={bay.dimensions.length}
-        height={bay.dimensions.height}
-        color={bay.color}
-        wallPosition="right"
-        rotation={[0, -Math.PI / 2, 0]}
-        wallFeatures={getWallFeatures('right')}
-        wallProfile={bay.wallProfile}
-      />
+      {/* Left wall - only if not connected to main building */}
+      {shouldRenderWall('left') && (
+        <Wall 
+          position={[-halfWidth, bay.dimensions.height/2, 0]} 
+          width={bay.dimensions.length}
+          height={bay.dimensions.height}
+          color={bay.color}
+          wallPosition="left"
+          rotation={[0, Math.PI / 2, 0]}
+          wallFeatures={getWallFeatures('left')}
+          wallProfile={bay.wallProfile}
+        />
+      )}
+      
+      {/* Right wall - only if not connected to main building */}
+      {shouldRenderWall('right') && (
+        <Wall 
+          position={[halfWidth, bay.dimensions.height/2, 0]} 
+          width={bay.dimensions.length}
+          height={bay.dimensions.height}
+          color={bay.color}
+          wallPosition="right"
+          rotation={[0, -Math.PI / 2, 0]}
+          wallFeatures={getWallFeatures('right')}
+          wallProfile={bay.wallProfile}
+        />
+      )}
       
       {/* Bay Roof */}
       <Roof
@@ -165,7 +187,7 @@ const BaySection: React.FC<BaySectionProps> = ({ bay, isActive, mainBuildingDime
         </mesh>
       )}
       
-      {/* Connection visualization */}
+      {/* Connection visualization - Shows OPEN connection */}
       {bay.connectionType === 'attached' && bay.connectionWall && (
         <mesh position={[
           bay.connectionWall === 'left' ? -halfWidth - 0.1 : 

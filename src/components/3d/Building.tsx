@@ -6,7 +6,6 @@ import Roof from './Roof';
 import WallFeature from './WallFeature';
 import BaySection from './BaySection';
 import InteriorWalls from './InteriorWalls';
-import BayDividerWalls from './BayDividerWalls';
 
 const Building: React.FC = () => {
   const { 
@@ -138,11 +137,10 @@ const Building: React.FC = () => {
           />
         )}
 
-        {/* Bay Divider Walls - Creates internal walls between main building and bays */}
-        <BayDividerWalls />
+        {/* NO MORE BAY DIVIDER WALLS - REMOVED FOR OPEN CONNECTION */}
       </group>
 
-      {/* Additional Bay Sections */}
+      {/* Connected Bay Sections - NO DIVIDER WALLS */}
       {bays.map((bay) => (
         bay.isActive && (
           <BaySection
