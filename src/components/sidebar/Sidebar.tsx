@@ -36,30 +36,6 @@ const Sidebar: React.FC = () => {
       title: 'Space Layout Detection', 
       icon: <Eye className="w-5 h-5" />,
       component: <SpaceLayoutPanel />
-    },
-    { 
-      id: 'layout' as PanelId, 
-      title: 'Wall Layout Design', 
-      icon: <Building className="w-5 h-5" />,
-      component: <WallLayoutPanel />
-    },
-    { 
-      id: 'roof' as PanelId, 
-      title: 'Roof Settings', 
-      icon: <Home className="w-5 h-5" />,
-      component: <RoofPanel />
-    },
-    { 
-      id: 'features' as PanelId, 
-      title: 'Wall Features', 
-      icon: <Layout className="w-5 h-5" />,
-      component: <WallFeaturesPanel />
-    },
-    { 
-      id: 'colors' as PanelId, 
-      title: 'Colors & Materials', 
-      icon: <Palette className="w-5 h-5" />,
-      component: <ColorsPanel />
     }
   ];
 
