@@ -5,10 +5,10 @@ import { useBuildingStore } from '../store/buildingStore';
 import type { ViewMode } from '../types';
 
 const ViewControls: React.FC = () => {
-  const { currentView, setCurrentView } = useBuildingStore();
+  const { viewMode, setViewMode } = useBuildingStore();
   
   const handleViewChange = (view: ViewMode) => {
-    setCurrentView(view);
+    setViewMode(view);
   };
 
   return (
@@ -22,7 +22,7 @@ const ViewControls: React.FC = () => {
       >
         <div className="flex flex-col">
           <button
-            className={`p-3 flex justify-center items-center ${currentView === '3d' ? 'bg-gray-100 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+            className={`p-3 flex justify-center items-center ${viewMode === '3d' ? 'bg-gray-100 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
             onClick={() => handleViewChange('3d')}
             title="3D View"
           >
@@ -30,7 +30,7 @@ const ViewControls: React.FC = () => {
           </button>
           
           <button
-            className={`p-3 flex justify-center items-center ${currentView === 'plan' ? 'bg-gray-100 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+            className={`p-3 flex justify-center items-center ${viewMode === 'plan' ? 'bg-gray-100 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
             onClick={() => handleViewChange('plan')}
             title="Plan View"
           >
@@ -38,7 +38,7 @@ const ViewControls: React.FC = () => {
           </button>
           
           <button
-            className={`p-3 flex justify-center items-center ${currentView === 'floor' ? 'bg-gray-100 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
+            className={`p-3 flex justify-center items-center ${viewMode === 'floor' ? 'bg-gray-100 text-primary' : 'text-gray-600 hover:bg-gray-50'}`}
             onClick={() => handleViewChange('floor')}
             title="Floor View"
           >
