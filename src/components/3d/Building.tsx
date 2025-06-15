@@ -6,6 +6,7 @@ import Roof from './Roof';
 import WallFeature from './WallFeature';
 import BaySection from './BaySection';
 import InteriorWalls from './InteriorWalls';
+import BayDividerWalls from './BayDividerWalls';
 
 const Building: React.FC = () => {
   const { 
@@ -136,6 +137,9 @@ const Building: React.FC = () => {
             roomWidth={dimensions.width}
           />
         )}
+
+        {/* Bay Divider Walls - Creates internal walls between main building and bays */}
+        <BayDividerWalls />
       </group>
 
       {/* Additional Bay Sections */}

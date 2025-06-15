@@ -61,6 +61,7 @@ const BayManagementPanel: React.FC = () => {
       connectionWall: newBay.connectionWall
     };
 
+    console.log(`🏗️ Adding new bay: ${bayToAdd.name} connected to ${newBay.connectionWall} wall`);
     addBay(bayToAdd);
     setShowAddForm(false);
     setNewBay({
@@ -125,6 +126,19 @@ const BayManagementPanel: React.FC = () => {
       exit={{ opacity: 0 }}
       className="space-y-4"
     >
+      {/* Bay System Explanation */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+        <div className="flex items-center space-x-2 mb-2">
+          <Layers className="w-4 h-4 text-green-600" />
+          <span className="text-sm font-medium text-green-800">Bay Section System</span>
+        </div>
+        <div className="text-xs text-green-700 space-y-1">
+          <div>🏗️ Main Building: <strong>[ ]</strong> = 1 section</div>
+          <div>➕ Add Bay: <strong>[ | ]</strong> = 2 sections with divider wall</div>
+          <div>🔧 Each bay can have independent accessories and features</div>
+        </div>
+      </div>
+
       {/* Main Building Status */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <div className="flex items-center space-x-2 mb-2">
@@ -146,122 +160,121 @@ const BayManagementPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* Add Bay Button */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-gray-700">Bay Sections ({bays.length})</h3>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="btn text-xs px-3 py-1"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          Add Bay
+        </button>
+      </div>
+
       {/* Bay List */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium text-gray-700">Bay Sections ({bays.length})</h3>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="btn text-xs px-3 py-1"
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            Add Bay
-          </button>
+      {bays.length === 0 && !showAddForm && (
+        <div className="text-center py-6 text-gray-500">
+          <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No bay sections added yet</p>
+          <p className="text-xs">Add extensions to create: <strong>[ | ]</strong></p>
         </div>
+      )}
 
-        {bays.length === 0 && (
-          <div className="text-center py-6 text-gray-500">
-            <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No bay sections added yet</p>
-            <p className="text-xs">Add extensions, lean-tos, or side bays</p>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {bays.map((bay) => (
-            <div
-              key={bay.id}
-              className={`border rounded-lg p-3 transition-all duration-200 ${
-                activeBayId === bay.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : bay.isActive
-                    ? 'border-gray-300 bg-white'
-                    : 'border-gray-200 bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  {getBayTypeIcon(bay.type)}
-                  <span className="font-medium text-sm">{bay.name}</span>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    bay.type === 'extension' ? 'bg-green-100 text-green-700' :
-                    bay.type === 'lean-to' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-purple-100 text-purple-700'
-                  }`}>
-                    {bay.type}
-                  </span>
-                </div>
+      <div className="space-y-2">
+        {bays.map((bay) => (
+          <div
+            key={bay.id}
+            className={`border rounded-lg p-3 transition-all duration-200 ${
+              activeBayId === bay.id
+                ? 'border-blue-500 bg-blue-50'
+                : bay.isActive
+                  ? 'border-gray-300 bg-white'
+                  : 'border-gray-200 bg-gray-50'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                {getBayTypeIcon(bay.type)}
+                <span className="font-medium text-sm">{bay.name}</span>
+                <span className={`text-xs px-2 py-1 rounded ${
+                  bay.type === 'extension' ? 'bg-green-100 text-green-700' :
+                  bay.type === 'lean-to' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-purple-100 text-purple-700'
+                }`}>
+                  {bay.type}
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => handleToggleBayVisibility(bay.id)}
+                  className={`p-1 rounded ${
+                    bay.isActive ? 'text-green-600 hover:bg-green-100' : 'text-gray-400 hover:bg-gray-100'
+                  }`}
+                  title={bay.isActive ? 'Hide bay' : 'Show bay'}
+                >
+                  {bay.isActive ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                </button>
                 
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={() => handleToggleBayVisibility(bay.id)}
-                    className={`p-1 rounded ${
-                      bay.isActive ? 'text-green-600 hover:bg-green-100' : 'text-gray-400 hover:bg-gray-100'
-                    }`}
-                    title={bay.isActive ? 'Hide bay' : 'Show bay'}
-                  >
-                    {bay.isActive ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  </button>
-                  
-                  <button
-                    onClick={() => handleEditBay(bay.id)}
-                    className={`p-1 rounded ${
-                      editingBay === bay.id ? 'text-blue-600 bg-blue-100' : 'text-gray-400 hover:bg-gray-100'
-                    }`}
-                    title="Edit bay"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                  
-                  <button
-                    onClick={() => duplicateBay(bay.id)}
-                    className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
-                    title="Duplicate bay"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </button>
-                  
-                  <button
-                    onClick={() => removeBay(bay.id)}
-                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded"
-                    title="Remove bay"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleEditBay(bay.id)}
+                  className={`p-1 rounded ${
+                    editingBay === bay.id ? 'text-blue-600 bg-blue-100' : 'text-gray-400 hover:bg-gray-100'
+                  }`}
+                  title="Edit bay"
+                >
+                  <Edit2 className="w-3 h-3" />
+                </button>
+                
+                <button
+                  onClick={() => duplicateBay(bay.id)}
+                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                  title="Duplicate bay"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+                
+                <button
+                  onClick={() => removeBay(bay.id)}
+                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded"
+                  title="Remove bay"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
               </div>
+            </div>
 
-              <div className="text-xs text-gray-600 space-y-1">
-                <div>Dimensions: {bay.dimensions.width}ft × {bay.dimensions.length}ft × {bay.dimensions.height}ft</div>
-                <div>Connected to: {bay.connectionWall} wall</div>
-                <div>Roof: {bay.roofType} ({bay.roofPitch}:12 pitch)</div>
-                {bay.accessories.length > 0 && (
-                  <div>Accessories: {bay.accessories.length} items</div>
-                )}
-              </div>
-
-              {activeBayId === bay.id && (
-                <div className="mt-3 pt-3 border-t border-blue-200">
-                  <div className="text-xs text-blue-700 font-medium mb-2">Active Bay Controls</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {/* Add feature logic */}}
-                      className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
-                    >
-                      Add Feature
-                    </button>
-                    <button
-                      onClick={() => {/* Add accessory logic */}}
-                      className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded"
-                    >
-                      Add Accessory
-                    </button>
-                  </div>
-                </div>
+            <div className="text-xs text-gray-600 space-y-1">
+              <div>Dimensions: {bay.dimensions.width}ft × {bay.dimensions.length}ft × {bay.dimensions.height}ft</div>
+              <div>Connected to: {bay.connectionWall} wall → Creates divider wall</div>
+              <div>Roof: {bay.roofType} ({bay.roofPitch}:12 pitch)</div>
+              {bay.accessories.length > 0 && (
+                <div>Accessories: {bay.accessories.length} items</div>
               )}
             </div>
-          ))}
-        </div>
+
+            {activeBayId === bay.id && (
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <div className="text-xs text-blue-700 font-medium mb-2">Active Bay Controls</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {/* Add feature logic */}}
+                    className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded"
+                  >
+                    Add Feature
+                  </button>
+                  <button
+                    onClick={() => {/* Add accessory logic */}}
+                    className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded"
+                  >
+                    Add Accessory
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Add Bay Form */}
@@ -308,7 +321,7 @@ const BayManagementPanel: React.FC = () => {
                   min="8"
                   max="40"
                   value={newBay.width}
-                  onChange={(e) => setNewBay({ ...newBay, width: parseFloat(e.target.value) })}
+                  onChange={(e) => setNewBay({ ...newBay, width: parseFloat(e.target.value) || 20 })}
                 />
               </div>
               <div>
@@ -319,7 +332,7 @@ const BayManagementPanel: React.FC = () => {
                   min="10"
                   max="60"
                   value={newBay.length}
-                  onChange={(e) => setNewBay({ ...newBay, length: parseFloat(e.target.value) })}
+                  onChange={(e) => setNewBay({ ...newBay, length: parseFloat(e.target.value) || 30 })}
                 />
               </div>
               <div>
@@ -330,22 +343,22 @@ const BayManagementPanel: React.FC = () => {
                   min="8"
                   max="20"
                   value={newBay.height}
-                  onChange={(e) => setNewBay({ ...newBay, height: parseFloat(e.target.value) })}
+                  onChange={(e) => setNewBay({ ...newBay, height: parseFloat(e.target.value) || 12 })}
                 />
               </div>
             </div>
 
             <div>
-              <label className="form-label">Connect to Wall</label>
+              <label className="form-label">Connect to Wall (Creates Divider)</label>
               <select
                 className="form-input"
                 value={newBay.connectionWall}
                 onChange={(e) => setNewBay({ ...newBay, connectionWall: e.target.value as WallPosition })}
               >
-                <option value="right">Right Wall</option>
-                <option value="left">Left Wall</option>
-                <option value="front">Front Wall</option>
-                <option value="back">Back Wall</option>
+                <option value="right">Right Wall → [ | ]</option>
+                <option value="left">Left Wall → [ | ]</option>
+                <option value="front">Front Wall → [ | ]</option>
+                <option value="back">Back Wall → [ | ]</option>
               </select>
             </div>
 
@@ -372,7 +385,7 @@ const BayManagementPanel: React.FC = () => {
                   max="12"
                   step="0.5"
                   value={newBay.roofPitch}
-                  onChange={(e) => setNewBay({ ...newBay, roofPitch: parseFloat(e.target.value) })}
+                  onChange={(e) => setNewBay({ ...newBay, roofPitch: parseFloat(e.target.value) || 4 })}
                 />
               </div>
             </div>
@@ -381,10 +394,9 @@ const BayManagementPanel: React.FC = () => {
               <button
                 onClick={handleAddBay}
                 className="flex-1 btn"
-                disabled={!newBay.name.trim()}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Add Bay
+                Add Bay Section
               </button>
               <button
                 onClick={() => setShowAddForm(false)}
@@ -405,7 +417,7 @@ const BayManagementPanel: React.FC = () => {
             <div>Total bays: {bays.length}</div>
             <div>Active bays: {bays.filter(b => b.isActive).length}</div>
             <div>Total accessories: {bays.reduce((sum, bay) => sum + bay.accessories.length, 0)}</div>
-            <div>Connected walls: {new Set(bays.map(b => b.connectionWall)).size}</div>
+            <div>Divider walls: {bays.filter(b => b.isActive).length}</div>
           </div>
         </div>
       )}

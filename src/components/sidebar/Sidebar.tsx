@@ -11,7 +11,7 @@ import BayManagementPanel from './BayManagementPanel';
 type PanelId = 'bayManagement' | 'dimensions' | 'roof' | 'features' | 'layout' | 'colors';
 
 const Sidebar: React.FC = () => {
-  const [expandedPanel, setExpandedPanel] = useState<PanelId | null>('bayManagement');
+  const [expandedPanel, setExpandedPanel] = useState<PanelId | null>('bayManagement'); // Start with bay management open
 
   const togglePanel = (panel: PanelId) => {
     setExpandedPanel(expandedPanel === panel ? null : panel);
