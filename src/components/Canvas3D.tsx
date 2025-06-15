@@ -252,6 +252,7 @@ interface Canvas3DProps {
 }
 
 const Canvas3D: React.FC<Canvas3DProps> = ({ view }) => {
+  // Handle plan view separately with the FloorPlan component
   if (view === 'plan') {
     return <FloorPlan />;
   }
