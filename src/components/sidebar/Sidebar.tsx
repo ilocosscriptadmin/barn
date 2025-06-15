@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, Home, Ruler, Layout, Grid3X3, Palette, Building, Eye, Layers } from 'lucide-react';
+import { ChevronRight, ChevronDown, Home, Ruler, Layout, Grid3X3, Palette, Building, Layers } from 'lucide-react';
 import DimensionsPanel from './DimensionsPanel';
 import RoofPanel from './RoofPanel';
 import WallFeaturesPanel from './WallFeaturesPanel';
 import WallLayoutPanel from './WallLayoutPanel';
 import ColorsPanel from './ColorsPanel';
-import SpaceLayoutPanel from './SpaceLayoutPanel';
 import BayManagementPanel from './BayManagementPanel';
 
-type PanelId = 'dimensions' | 'roof' | 'features' | 'layout' | 'colors' | 'spaceLayout' | 'bayManagement';
+type PanelId = 'bayManagement' | 'dimensions' | 'roof' | 'features' | 'layout' | 'colors';
 
 const Sidebar: React.FC = () => {
   const [expandedPanel, setExpandedPanel] = useState<PanelId | null>('bayManagement');
@@ -30,12 +29,6 @@ const Sidebar: React.FC = () => {
       title: 'Building Dimensions', 
       icon: <Ruler className="w-5 h-5" />,
       component: <DimensionsPanel />
-    },
-    { 
-      id: 'spaceLayout' as PanelId, 
-      title: 'Space Layout Detection', 
-      icon: <Eye className="w-5 h-5" />,
-      component: <SpaceLayoutPanel />
     },
     { 
       id: 'layout' as PanelId, 
