@@ -35,6 +35,7 @@ const WallLayoutPanel: React.FC = () => {
   // Initialize wall layout when dimensions change
   useEffect(() => {
     if (!wallLayout) {
+      console.log('🏗️ Creating initial wall layout');
       const layout = createDefaultWallLayout(dimensions.width, dimensions.length);
       updateWallLayout(layout);
       
@@ -46,6 +47,7 @@ const WallLayoutPanel: React.FC = () => {
       );
       setValidationResult(validation);
     } else {
+      console.log('🏗️ Validating existing wall layout');
       const validation = validateWallLayout(
         wallLayout.wallSegments,
         wallLayout.gaps,
@@ -59,6 +61,7 @@ const WallLayoutPanel: React.FC = () => {
   const handleAddWall = () => {
     if (!wallLayout) return;
 
+    console.log('🏗️ Adding new wall:', newWall);
     const result = addWallSegment(wallLayout, newWall);
     
     if (result.valid) {
@@ -71,14 +74,17 @@ const WallLayoutPanel: React.FC = () => {
         position: 0,
         type: 'interior'
       });
+      console.log('✅ Wall added successfully');
     } else {
       setValidationResult(result);
+      console.log('❌ Wall addition failed:', result.errors);
     }
   };
 
   const handleRemoveWall = (wallId: string) => {
     if (!wallLayout) return;
 
+    console.log('🗑️ Removing wall:', wallId);
     const result = removeWallSegment(wallLayout, wallId);
     updateWallLayout(result.layout);
     setValidationResult(result);
@@ -87,6 +93,7 @@ const WallLayoutPanel: React.FC = () => {
   const handleUpdateWall = (wallId: string, updates: Partial<WallSegment>) => {
     if (!wallLayout) return;
 
+    console.log('✏️ Updating wall:', wallId, updates);
     const result = updateWallSegment(wallLayout, wallId, updates);
     updateWallLayout(result.layout);
     setValidationResult(result);
@@ -95,6 +102,7 @@ const WallLayoutPanel: React.FC = () => {
   const handleOptimizeLayout = () => {
     if (!wallLayout) return;
 
+    console.log('🔧 Optimizing wall layout');
     const optimized = optimizeWallLayout(
       wallLayout.wallSegments,
       wallLayout.gaps,
@@ -145,14 +153,14 @@ const WallLayoutPanel: React.FC = () => {
       </div>
 
       {/* Important Note */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
         <div className="flex items-center space-x-2 mb-2">
-          <Info className="w-4 h-4 text-yellow-600" />
-          <span className="text-sm font-medium text-yellow-800">Interior Wall Design Tool</span>
+          <Info className="w-4 h-4 text-green-600" />
+          <span className="text-sm font-medium text-green-800">Interior Wall Designer</span>
         </div>
-        <div className="text-xs text-yellow-700">
-          This tool helps you plan interior wall layouts. The walls you design here will appear as 3D structures inside your barn.
-          Use this to divide your barn into rooms, stalls, or work areas.
+        <div className="text-xs text-green-700">
+          Design interior walls that will appear as 3D structures inside your barn. Perfect for creating stalls, rooms, or work areas.
+          Switch to 3D view to see your walls in the barn!
         </div>
       </div>
 
@@ -196,31 +204,11 @@ const WallLayoutPanel: React.FC = () => {
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-4 h-4 text-green-600" />
             <span className="text-sm font-medium text-green-800">
-              Wall layout is valid - interior walls will appear in 3D view
+              Interior walls are ready! Switch to 3D view to see them in your barn.
             </span>
           </div>
         </div>
       )}
-
-      {/* Measurements Summary */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-        <div className="flex items-center space-x-2 mb-2">
-          <Ruler className="w-4 h-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-800">Layout Measurements</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
-          <div>Total wall width:</div>
-          <div className="font-medium">{formatFeetAndInches(validationResult.measurements.totalWallWidth)}</div>
-          <div>Total gap width:</div>
-          <div className="font-medium">{formatFeetAndInches(validationResult.measurements.totalGapWidth)}</div>
-          <div>Used space:</div>
-          <div className="font-medium">{formatFeetAndInches(validationResult.measurements.usedSpace)}</div>
-          <div>Remaining space:</div>
-          <div className={`font-medium ${validationResult.measurements.remainingSpace < 0 ? 'text-red-600' : 'text-green-600'}`}>
-            {formatFeetAndInches(validationResult.measurements.remainingSpace)}
-          </div>
-        </div>
-      </div>
 
       {/* Add New Wall */}
       <div className="border border-gray-200 rounded-lg p-3">
@@ -248,7 +236,7 @@ const WallLayoutPanel: React.FC = () => {
                 max="2"
                 step="0.08" // 1 inch increments
                 value={newWall.width}
-                onChange={(e) => setNewWall({ ...newWall, width: parseFloat(e.target.value) })}
+                onChange={(e) => setNewWall({ ...newWall, width: parseFloat(e.target.value) || 0.33 })}
               />
               <p className="text-xs text-gray-500 mt-1">
                 {formatFeetAndInches(newWall.width)}
@@ -264,7 +252,7 @@ const WallLayoutPanel: React.FC = () => {
                 max={dimensions.width}
                 step="0.5"
                 value={newWall.position}
-                onChange={(e) => setNewWall({ ...newWall, position: parseFloat(e.target.value) })}
+                onChange={(e) => setNewWall({ ...newWall, position: parseFloat(e.target.value) || 0 })}
               />
               <p className="text-xs text-gray-500 mt-1">
                 {formatFeetAndInches(newWall.position)} from left
@@ -287,7 +275,7 @@ const WallLayoutPanel: React.FC = () => {
           <button
             onClick={handleAddWall}
             className="w-full btn"
-            disabled={!newWall.name || newWall.width <= 0}
+            disabled={!newWall.name.trim() || newWall.width <= 0}
           >
             <Plus className="w-4 h-4 mr-1" />
             Add Interior Wall
@@ -298,7 +286,7 @@ const WallLayoutPanel: React.FC = () => {
       {/* Existing Walls */}
       {wallLayout.wallSegments.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Wall Segments</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Wall Segments ({wallLayout.wallSegments.length})</h3>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {wallLayout.wallSegments.map((wall) => (
               <div 

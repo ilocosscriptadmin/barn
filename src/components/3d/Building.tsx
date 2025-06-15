@@ -128,11 +128,12 @@ const Building: React.FC = () => {
         ))}
 
         {/* Interior Walls from Wall Layout Design */}
-        {wallLayout && wallLayout.wallSegments && (
+        {wallLayout && wallLayout.wallSegments && wallLayout.wallSegments.length > 0 && (
           <InteriorWalls
             wallSegments={wallLayout.wallSegments}
             roomHeight={dimensions.height}
             roomLength={dimensions.length}
+            roomWidth={dimensions.width}
           />
         )}
       </group>

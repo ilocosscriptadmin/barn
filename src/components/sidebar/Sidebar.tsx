@@ -32,7 +32,7 @@ const Sidebar: React.FC = () => {
     },
     { 
       id: 'layout' as PanelId, 
-      title: 'Wall Layout Design', 
+      title: 'Interior Walls', 
       icon: <Building className="w-5 h-5" />,
       component: <WallLayoutPanel />
     },
