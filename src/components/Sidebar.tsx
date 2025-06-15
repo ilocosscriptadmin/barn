@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronDown, Home, Ruler, Layout, Grid3X3, Palette, Building } from 'lucide-react';
+import { ChevronRight, ChevronDown, Home, Ruler, Layout, Grid3X3, Palette, Building, Eye, Grid } from 'lucide-react';
 import DimensionsPanel from './sidebar/DimensionsPanel';
 import RoofPanel from './sidebar/RoofPanel';
 import WallFeaturesPanel from './sidebar/WallFeaturesPanel';
 import WallLayoutPanel from './sidebar/WallLayoutPanel';
 import ColorsPanel from './sidebar/ColorsPanel';
+import SpaceLayoutPanel from './sidebar/SpaceLayoutPanel';
+import StructuralBayPanel from './sidebar/StructuralBayPanel';
 
-type PanelId = 'dimensions' | 'roof' | 'features' | 'layout' | 'colors';
+type PanelId = 'dimensions' | 'roof' | 'features' | 'layout' | 'colors' | 'spaceLayout' | 'structuralBays';
 
 const Sidebar: React.FC = () => {
-  const [expandedPanel, setExpandedPanel] = useState<PanelId | null>('dimensions');
+  const [expandedPanel, setExpandedPanel] = useState<PanelId | null>('structuralBays');
 
   const togglePanel = (panel: PanelId) => {
     setExpandedPanel(expandedPanel === panel ? null : panel);
@@ -18,10 +20,22 @@ const Sidebar: React.FC = () => {
 
   const panelConfig = [
     { 
+      id: 'structuralBays' as PanelId, 
+      title: 'Structural Bay Design', 
+      icon: <Grid className="w-5 h-5" />,
+      component: <StructuralBayPanel />
+    },
+    { 
       id: 'dimensions' as PanelId, 
       title: 'Building Dimensions', 
       icon: <Ruler className="w-5 h-5" />,
       component: <DimensionsPanel />
+    },
+    { 
+      id: 'spaceLayout' as PanelId, 
+      title: 'Space Layout Detection', 
+      icon: <Eye className="w-5 h-5" />,
+      component: <SpaceLayoutPanel />
     },
     { 
       id: 'layout' as PanelId, 
@@ -58,7 +72,7 @@ const Sidebar: React.FC = () => {
     >
       <div className="p-4 border-b border-gray-200 flex items-center">
         <Grid3X3 className="w-6 h-6 text-primary mr-2" />
-        <h1 className="text-xl font-semibold">Barn Builder</h1>
+        <h1 className="text-xl font-semibold">3D Barn Builder</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto">
